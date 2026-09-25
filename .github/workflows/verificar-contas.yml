@@ -24,9 +24,11 @@ jobs:
           APP_URL: ${{ vars.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          # Sem configuração ainda: só avisa (sair com erro faria o GitHub mandar
+          # e-mail de falha 3x por dia até alguém configurar).
           if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "::error::Configure a variable APP_URL e o secret CRON_SECRET em Settings → Secrets and variables → Actions."
-            exit 1
+            echo "::warning::Verificação pulada: configure a variable APP_URL e o secret CRON_SECRET em Settings → Secrets and variables → Actions."
+            exit 0
           fi
           curl --fail-with-body --silent --show-error --max-time 120 \
             -X POST "${APP_URL%/}/api/cron/check" \
