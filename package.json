@@ -1,0 +1,22 @@
+{
+  "name": "pipecompany-ads-monitor",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Monitoramento dos clientes de tráfego pago da Pipe Company: saldo Meta/Google Ads, otimizações, pendências e alertas.",
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev:api": "node --watch --env-file-if-exists=.env dev/server.js",
+    "dev:web": "npm run dev --prefix web",
+    "build": "npm run build --prefix web"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3"
+  }
+}
