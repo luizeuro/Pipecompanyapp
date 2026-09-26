@@ -10,9 +10,9 @@ alertas automáticos por e-mail.
 | Camada | Tecnologia |
 |---|---|
 | Backend | Node.js + Express, uma função serverless só (`api/index.js`) na Vercel |
-| Banco | Supabase (Postgres), acessado só pelo backend com a service role key |
+| Banco | Supabase (Postgres), acessado só pelo backend |
 | Frontend | React + Vite + Tailwind (`web/`), modo claro e escuro |
-| Agendamento | GitHub Actions, 3x por dia (`.github/workflows/verificar-contas.yml`) |
+| Agendamento | Cron da Vercel, 3x por dia (`crons` no `vercel.json`) |
 | E-mail | Resend |
 | Hospedagem | Vercel, deploy automático a cada commit na `main` |
 
@@ -51,21 +51,24 @@ dev/server.js         sobe a API localmente
 
 ## Colocar no ar
 
-1. **Supabase**: crie o projeto (região São Paulo), abra *SQL Editor → New
-   query*, cole `supabase/migrations/001_init.sql` e clique em *Run*.
+1. **Supabase**: crie o projeto (região São Paulo) e rode, no *SQL Editor*,
+   `supabase/migrations/001_init.sql` e depois `002_backend_access.sql`.
 2. **Vercel**: importe este repositório (Framework Preset: *Other*; o
-   `vercel.json` já define build e rotas) e crie as variáveis de ambiente
-   listadas em `.env.example`. O mínimo para abrir:
-   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`,
-   `ENCRYPTION_KEY`, `CRON_SECRET`.
-   Para gerar os segredos:
+   `vercel.json` já define build, rotas e o cron) e crie as variáveis de
+   ambiente listadas em `.env.example`. Para o banco, use uma das formas:
+   - `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`; ou
+   - `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY` + `SUPABASE_BACKEND_SECRET`,
+     gravando o mesmo segredo no banco (instrução no topo de
+     `supabase/migrations/002_backend_access.sql`). É a forma usada neste
+     projeto: a chave pública sozinha não acessa nada.
+
+   Também: `JWT_SECRET`, `ENCRYPTION_KEY` e `CRON_SECRET`. Para gerar:
    `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 3. Abra o app: a primeira tela cria o acesso de administrador. O resto da
    equipe é cadastrado em *Configurações → Equipe*.
-4. **GitHub Actions**: em *Settings → Secrets and variables → Actions*, crie o
-   secret `CRON_SECRET` (mesmo valor da Vercel) e a variable `APP_URL` (ex:
-   `https://pipecompanyapp.vercel.app`). Para testar, rode o workflow
-   *Verificar contas* manualmente na aba *Actions*.
+4. **Agendamento**: nada a fazer. O Cron da Vercel chama `/api/cron/check`
+   3x por dia (12h, 17h e 22h UTC = 9h, 14h e 19h de Brasília; no plano Hobby
+   o horário pode variar até 59 minutos) e manda o `CRON_SECRET` sozinho.
 5. **Meta Ads**: no Business Manager da Pipe, crie um usuário do sistema,
    atribua a ele as contas de anúncio dos clientes e gere um token com
    `ads_read`. Coloque em `META_SYSTEM_USER_TOKEN` (e `META_APP_SECRET`, se o

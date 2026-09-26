@@ -3,6 +3,11 @@
   "installCommand": "npm install && npm install --prefix web",
   "buildCommand": "npm run build --prefix web",
   "outputDirectory": "web/dist",
+  "crons": [
+    { "path": "/api/cron/check", "schedule": "0 12 * * *" },
+    { "path": "/api/cron/check", "schedule": "0 17 * * *" },
+    { "path": "/api/cron/check", "schedule": "0 22 * * *" }
+  ],
   "functions": {
     "api/index.js": { "maxDuration": 60 }
   },
