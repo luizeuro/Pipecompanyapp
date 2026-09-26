@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { BellRing, ListTodo, Plus, UserRound } from 'lucide-react'
 import { CLIENT_STATUS } from '../lib/constants.js'
 import PlatformBlock from './PlatformBlock.jsx'
-import { cx, LevelBadge, OptimizationBadge, TagChip } from './ui.jsx'
+import { cx, HealthBadge, LastContactBadge, LevelBadge, OptimizationBadge, TagChip } from './ui.jsx'
 
 export default function ClientCard({ client: c, onAddOptimization }) {
   const platforms = [
@@ -22,6 +22,7 @@ export default function ClientCard({ client: c, onAddOptimization }) {
           </Link>
           <div className="mt-1 flex flex-wrap items-center gap-1">
             {inactive && <LevelBadge level="never">{CLIENT_STATUS[c.status]?.label}</LevelBadge>}
+            <HealthBadge health={c.health} />
             {(c.tags || []).map((t) => (
               <TagChip key={t} id={t} size="xs" />
             ))}
@@ -68,6 +69,7 @@ export default function ClientCard({ client: c, onAddOptimization }) {
       <footer className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
         <div className="flex flex-wrap items-center gap-2">
           <OptimizationBadge date={c.last_optimization_at} prefix="Otimização: " />
+          <LastContactBadge date={c.last_contact_at} />
           {c.open_pendencias_count > 0 && (
             <Link
               to={`/clientes/${c.id}?aba=pendencias`}

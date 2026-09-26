@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { KeyRound } from 'lucide-react'
 import { api } from '../lib/api.js'
 import { CLIENT_TAGS } from '../lib/tags.js'
-import { CLIENT_STATUS, RESULT_METRIC_OPTIONS } from '../lib/constants.js'
+import { CLIENT_STATUS, LINK_FIELDS, RESULT_METRIC_OPTIONS } from '../lib/constants.js'
 import { formatGoogleId } from '../lib/format.js'
 import { useData } from '../lib/data.jsx'
 import Modal from './Modal.jsx'
@@ -24,6 +24,14 @@ const EMPTY = {
   monthly_budget: '',
   notes: '',
   meta_access_token: '',
+  segment: '',
+  city: '',
+  fee_monthly: '',
+  contract_start: '',
+  billing_day: '',
+  renewal_date: '',
+  links: {},
+  access_notes: '',
 }
 
 function fromClient(c) {
@@ -40,6 +48,14 @@ function fromClient(c) {
     balance_alert_threshold: c.balance_alert_threshold != null ? String(c.balance_alert_threshold) : '100',
     monthly_budget: c.monthly_budget != null ? String(c.monthly_budget) : '',
     notes: c.notes || '',
+    segment: c.segment || '',
+    city: c.city || '',
+    fee_monthly: c.fee_monthly != null ? String(c.fee_monthly) : '',
+    contract_start: c.contract_start || '',
+    billing_day: c.billing_day != null ? String(c.billing_day) : '',
+    renewal_date: c.renewal_date || '',
+    links: { ...(c.links || {}) },
+    access_notes: c.access_notes || '',
   }
 }
 
@@ -61,6 +77,7 @@ export default function ClientForm({ open, client, onClose, onSaved }) {
   }, [open, client])
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  const setLink = (key) => (e) => setForm((f) => ({ ...f, links: { ...f.links, [key]: e.target.value } }))
   const toggleTag = (id) =>
     setForm((f) => ({ ...f, tags: f.tags.includes(id) ? f.tags.filter((t) => t !== id) : [...f.tags, id] }))
 
@@ -139,10 +156,48 @@ export default function ClientForm({ open, client, onClose, onSaved }) {
               ))}
             </datalist>
           </Field>
-          <Field label="Verba mensal (R$)" htmlFor="cf-budget" hint="Opcional, só para referência.">
-            <input id="cf-budget" className="input" inputMode="decimal" value={form.monthly_budget} onChange={set('monthly_budget')} placeholder="3000" />
+          <Field label="Segmento" htmlFor="cf-segment">
+            <input id="cf-segment" className="input" value={form.segment} onChange={set('segment')} maxLength={80} placeholder="Ex: odontologia, imobiliária" />
           </Field>
         </div>
+
+        <fieldset className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+          <legend className="section-title px-1">Contrato</legend>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Honorário mensal (R$)" htmlFor="cf-fee">
+              <input id="cf-fee" className="input" inputMode="decimal" value={form.fee_monthly} onChange={set('fee_monthly')} placeholder="2000" />
+            </Field>
+            <Field label="Verba de mídia mensal (R$)" htmlFor="cf-budget">
+              <input id="cf-budget" className="input" inputMode="decimal" value={form.monthly_budget} onChange={set('monthly_budget')} placeholder="3000" />
+            </Field>
+            <Field label="Dia da cobrança" htmlFor="cf-billing">
+              <input id="cf-billing" type="number" min={1} max={31} className="input" value={form.billing_day} onChange={set('billing_day')} placeholder="10" />
+            </Field>
+            <Field label="Cliente desde" htmlFor="cf-start">
+              <input id="cf-start" type="date" className="input" value={form.contract_start} onChange={set('contract_start')} />
+            </Field>
+            <Field label="Renovação do contrato" htmlFor="cf-renewal">
+              <input id="cf-renewal" type="date" className="input" value={form.renewal_date} onChange={set('renewal_date')} />
+            </Field>
+            <Field label="Cidade" htmlFor="cf-city">
+              <input id="cf-city" className="input" value={form.city} onChange={set('city')} maxLength={80} />
+            </Field>
+          </div>
+        </fieldset>
+
+        <fieldset className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+          <legend className="section-title px-1">Links e acessos</legend>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {LINK_FIELDS.map((f) => (
+              <Field key={f.key} label={f.label} htmlFor={`cf-link-${f.key}`}>
+                <input id={`cf-link-${f.key}`} className="input" value={form.links?.[f.key] || ''} onChange={setLink(f.key)} maxLength={500} placeholder={f.placeholder} />
+              </Field>
+            ))}
+          </div>
+          <Field label="Onde estão os acessos" htmlFor="cf-access" hint="Só diga ONDE estão (ex: cofre de senhas da Pipe, e-mail do cliente). Nunca cole senhas aqui." className="mt-4">
+            <textarea id="cf-access" className="input min-h-[60px]" value={form.access_notes} onChange={set('access_notes')} maxLength={2000} />
+          </Field>
+        </fieldset>
 
         <fieldset className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
           <legend className="section-title px-1">Contas de anúncio</legend>

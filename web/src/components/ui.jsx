@@ -40,6 +40,55 @@ export function OptimizationBadge({ date, prefix = '' }) {
   )
 }
 
+// Mesma régua, aplicada ao último contato com o cliente.
+export function LastContactBadge({ date, prefix = 'Contato: ' }) {
+  const level = urgencyLevel(daysSince(date))
+  return (
+    <LevelBadge level={level}>
+      {prefix}
+      {/* Com prefixo ("Contato: há 3 dias") fica minúsculo; sozinho, igual ao selo de otimização. */}
+      {prefix ? (date ? optimizationLabel(date).toLowerCase() : 'nunca') : date ? optimizationLabel(date) : 'Nunca'}
+    </LevelBadge>
+  )
+}
+
+// Selo de saúde (Saudável / Atenção / Em risco). Os motivos aparecem ao passar
+// o mouse e, na ficha do cliente, em lista (HealthReasons).
+export function HealthBadge({ health, showScore = false }) {
+  if (!health) return null
+  return (
+    <span title={health.reasons.length ? health.reasons.join(' · ') : 'Tudo em dia'}>
+      <LevelBadge level={health.level}>
+        {health.label}
+        {showScore && <span className="tabular opacity-70">· {health.score}</span>}
+      </LevelBadge>
+    </span>
+  )
+}
+
+export function HealthReasons({ health }) {
+  if (!health) return null
+  if (!health.reasons.length) {
+    return (
+      <p className="muted text-xs">
+        {health.onboarding
+          ? 'Cliente novo (até 14 dias): falta de contato e de otimização ainda não pesa na nota.'
+          : 'Contato, otimização, alertas e pendências em dia.'}
+      </p>
+    )
+  }
+  return (
+    <ul className="space-y-1 text-xs">
+      {health.reasons.map((r) => (
+        <li key={r} className="flex items-start gap-1.5 text-brand-600 dark:text-slate-300">
+          <span className={cx('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', LEVEL_STYLES[health.level].dot)} aria-hidden="true" />
+          {r}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export function TagChip({ id, selected, onClick, size = 'sm' }) {
   const tag = getTag(id)
   const base = cx(

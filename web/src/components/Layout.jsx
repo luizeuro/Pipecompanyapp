@@ -5,7 +5,9 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
+  BarChart3,
   BellRing,
+  CalendarCheck,
   LayoutDashboard,
   ListTodo,
   LogOut,
@@ -14,6 +16,7 @@ import {
   Settings,
   Sparkles,
   Sun,
+  Target,
   Users,
   X,
 } from 'lucide-react'
@@ -21,12 +24,20 @@ import { useData } from '../lib/data.jsx'
 import { currentTheme, setTheme } from '../lib/theme.js'
 import { cx } from './ui.jsx'
 
+// Menu em dois blocos: o CRM (relacionamento e comercial) e o tráfego
+// (contas de anúncio). Configurações fica sozinha no fim.
 const NAV = [
-  { to: '/', label: 'Painel', icon: LayoutDashboard, end: true },
+  { section: 'CRM' },
+  { to: '/', label: 'Hoje', icon: CalendarCheck, end: true, badge: 'today' },
+  { to: '/funil', label: 'Funil comercial', icon: Target },
   { to: '/clientes', label: 'Clientes', icon: Users },
+  { to: '/numeros', label: 'Números', icon: BarChart3 },
+  { section: 'Tráfego' },
+  { to: '/contas', label: 'Contas de anúncio', icon: LayoutDashboard },
   { to: '/otimizacoes', label: 'Otimizações', icon: Sparkles },
   { to: '/pendencias', label: 'Pendências', icon: ListTodo, badge: 'pendencias' },
   { to: '/alertas', label: 'Alertas', icon: BellRing, badge: 'alerts' },
+  { section: null },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
@@ -37,7 +48,7 @@ function Logo({ compact }) {
       <div className="min-w-0 leading-tight">
         <div className="text-sm font-bold tracking-wide text-white">PIPE COMPANY</div>
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-300 dark:text-brand-200">
-          Monitor de contas
+          CRM · Monitor
         </div>
       </div>
     </div>
@@ -47,7 +58,19 @@ function Logo({ compact }) {
 function NavItems({ badges, onNavigate }) {
   return (
     <nav className="flex flex-col gap-1">
-      {NAV.map(({ to, label, icon: Icon, end, badge }) => (
+      {NAV.map(({ section, to, label, icon: Icon, end, badge }, i) =>
+        section !== undefined ? (
+          <div
+            key={`s-${i}`}
+            className={cx(
+              'px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-brand-400 dark:text-brand-200/70',
+              i > 0 && 'mt-4',
+              !section && 'mt-2 border-t border-white/10 pt-2 dark:border-black/20',
+            )}
+          >
+            {section}
+          </div>
+        ) : (
         <NavLink
           key={to}
           to={to}
@@ -75,7 +98,8 @@ function NavItems({ badges, onNavigate }) {
             </span>
           )}
         </NavLink>
-      ))}
+        ),
+      )}
     </nav>
   )
 }
@@ -124,7 +148,7 @@ function SidebarFooter({ user, onLogout }) {
 }
 
 export default function Layout({ user, onLogout, children }) {
-  const { alerts, clients } = useData()
+  const { alerts, clients, today, todayDueCount } = useData()
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
 
@@ -136,7 +160,15 @@ export default function Layout({ user, onLogout, children }) {
   }, [location.pathname])
 
   const overdue = clients.reduce((s, c) => s + (c.overdue_pendencias_count || 0), 0)
+  // "Hoje" fica vermelho quando há algo atrasado (não só vencendo hoje).
+  const hasOverdue = Boolean(
+    today &&
+      (today.followups.some((f) => f.next_step_at < today.today) ||
+        today.leads.some((l) => l.next_step_at && l.next_step_at < today.today) ||
+        today.pendencias.some((p) => p.due_date < today.today)),
+  )
   const badges = {
+    today: { count: todayDueCount, urgent: hasOverdue },
     alerts: { count: alerts.length, urgent: alerts.some((a) => a.severity === 'critical') },
     pendencias: { count: clients.reduce((s, c) => s + (c.open_pendencias_count || 0), 0), urgent: overdue > 0 },
   }

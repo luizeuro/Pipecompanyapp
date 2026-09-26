@@ -1,16 +1,24 @@
 // Modal próprio (nada de confirm()/alert() nativo, que trava testes
 // automatizados e não segue o visual do app). Fecha com Esc e no fundo.
+// Pode abrir um modal por cima de outro (ex: "Registrar contato" dentro do
+// detalhe do lead): uma pilha garante que o Esc só feche o de cima.
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cx } from './ui.jsx'
+
+const openStack = []
 
 export default function Modal({ open, onClose, title, children, footer, size = 'md' }) {
   const panelRef = useRef(null)
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => e.key === 'Escape' && onClose?.()
+    const token = {}
+    openStack.push(token)
+    const onKey = (e) => {
+      if (e.key === 'Escape' && openStack[openStack.length - 1] === token) onClose?.()
+    }
     document.addEventListener('keydown', onKey)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -19,6 +27,7 @@ export default function Modal({ open, onClose, title, children, footer, size = '
       panelRef.current?.querySelector('input:not([type=hidden]), textarea, select')?.focus()
     }, 30)
     return () => {
+      openStack.splice(openStack.indexOf(token), 1)
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
       clearTimeout(t)

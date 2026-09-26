@@ -1,9 +1,10 @@
-// Confirmação de ação destrutiva, no lugar do confirm() nativo do navegador.
+// Confirmação de ação, no lugar do confirm() nativo do navegador.
+// tone="danger" (padrão) pra excluir; tone="success" pra ação positiva (ex: fechou contrato).
 import { useState } from 'react'
 import Modal from './Modal.jsx'
 import { Spinner } from './ui.jsx'
 
-export default function ConfirmDialog({ open, title, message, confirmLabel = 'Excluir', onConfirm, onClose }) {
+export default function ConfirmDialog({ open, title, message, confirmLabel = 'Excluir', tone = 'danger', onConfirm, onClose }) {
   const [busy, setBusy] = useState(false)
 
   async function handleConfirm() {
@@ -27,7 +28,12 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'Ex
           <button type="button" className="btn-secondary" onClick={onClose} disabled={busy}>
             Cancelar
           </button>
-          <button type="button" className="btn-danger" onClick={handleConfirm} disabled={busy}>
+          <button
+            type="button"
+            className={tone === 'success' ? 'btn bg-emerald-600 text-white hover:bg-emerald-700' : 'btn-danger'}
+            onClick={handleConfirm}
+            disabled={busy}
+          >
             {busy && <Spinner />}
             {confirmLabel}
           </button>
