@@ -7,13 +7,13 @@ import { useData } from '../lib/data.jsx'
 import { usePersistentState } from '../lib/usePersistentState.js'
 import { filterClients } from '../lib/clientFilters.js'
 import { CLIENT_STATUS } from '../lib/constants.js'
-import { formatGoogleId } from '../lib/format.js'
+import { formatGoogleId, money } from '../lib/format.js'
 import { LEVEL_STYLES } from '../lib/urgency.js'
 import ClientFilterBar, { DEFAULT_FILTER_STATE } from '../components/ClientFilterBar.jsx'
 import ClientForm from '../components/ClientForm.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import { useToast } from '../components/Toast.jsx'
-import { cx, EmptyState, LevelBadge, OptimizationBadge, PageHeader, TagChip } from '../components/ui.jsx'
+import { cx, EmptyState, HealthBadge, LastContactBadge, LevelBadge, OptimizationBadge, PageHeader, TagChip } from '../components/ui.jsx'
 
 function AccountCell({ id, level, format = (v) => v }) {
   if (!id) return <span className="text-slate-300 dark:text-slate-600">—</span>
@@ -52,7 +52,7 @@ export default function Clients() {
     <>
       <PageHeader
         title="Clientes"
-        subtitle="Cadastro dos clientes e das contas de anúncio monitoradas."
+        subtitle="Carteira da Pipe: saúde, honorário, contato e contas de anúncio de cada cliente."
         actions={
           <button type="button" className="btn-primary" onClick={() => setEditing({})}>
             <Plus className="h-4 w-4" /> Novo cliente
@@ -79,14 +79,17 @@ export default function Clients() {
           />
         ) : (
           <div className="scroll-thin overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
+            <table className="w-full min-w-[1180px] text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-brand-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Cliente</th>
                   <th className="px-4 py-3 font-semibold">Situação</th>
+                  <th className="px-4 py-3 font-semibold">Saúde</th>
+                  <th className="px-4 py-3 text-right font-semibold">Honorário</th>
                   <th className="px-4 py-3 font-semibold">Meta Ads</th>
                   <th className="px-4 py-3 font-semibold">Google Ads</th>
                   <th className="px-4 py-3 font-semibold">Responsável</th>
+                  <th className="px-4 py-3 font-semibold">Último contato</th>
                   <th className="px-4 py-3 font-semibold">Última otimização</th>
                   <th className="px-4 py-3 text-center font-semibold">Pend.</th>
                   <th className="px-4 py-3" aria-label="Ações" />
@@ -115,12 +118,21 @@ export default function Clients() {
                       <LevelBadge level={c.status === 'active' ? 'ok' : 'never'}>{CLIENT_STATUS[c.status]?.label}</LevelBadge>
                     </td>
                     <td className="px-4 py-3">
+                      {c.health ? <HealthBadge health={c.health} showScore /> : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                    </td>
+                    <td className="tabular px-4 py-3 text-right">
+                      {c.fee_monthly != null ? money(c.fee_monthly) : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
                       <AccountCell id={c.meta_ad_account_id} level={c.meta_level} format={(v) => `act_${v}`} />
                     </td>
                     <td className="px-4 py-3">
                       <AccountCell id={c.google_ads_customer_id} level={c.google_level} format={formatGoogleId} />
                     </td>
                     <td className="muted px-4 py-3">{c.manager || '—'}</td>
+                    <td className="px-4 py-3">
+                      <LastContactBadge date={c.last_contact_at} prefix="" />
+                    </td>
                     <td className="px-4 py-3">
                       <OptimizationBadge date={c.last_optimization_at} />
                     </td>

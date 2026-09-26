@@ -17,7 +17,7 @@ const STEPS = {
     title: 'Falta criar as tabelas no Supabase',
     steps: [
       'No Supabase, abra SQL Editor → New query.',
-      'Cole todo o conteúdo do arquivo supabase/migrations/001_init.sql do repositório e clique em Run.',
+      'Cole o conteúdo de supabase/migrations/001_init.sql e clique em Run; depois faça o mesmo com 002_crm.sql.',
       'Recarregue esta página.',
     ],
   },

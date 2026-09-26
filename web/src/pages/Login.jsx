@@ -68,9 +68,9 @@ export default function Login({ needsSetup, onLoggedIn }) {
       <div className="flex items-center justify-center bg-ink px-6 py-10 dark:bg-brand-800 lg:w-[44%] lg:py-0">
         <div className="max-w-sm text-center lg:text-left">
           <img src="/pipe-logo.png" alt="Pipe Company" className="logo-screen mx-auto h-28 w-28 lg:mx-0 lg:h-40 lg:w-40" />
-          <h1 className="mt-6 text-2xl font-bold text-white lg:text-3xl">Monitor de contas</h1>
+          <h1 className="mt-6 text-2xl font-bold text-white lg:text-3xl">CRM e monitor de contas</h1>
           <p className="mt-2 text-sm leading-relaxed text-brand-200">
-            Saldo, veiculação, otimizações e pendências de todos os clientes de tráfego da Pipe num lugar só.
+            Funil comercial, relacionamento com os clientes e as contas de anúncio da Pipe num lugar só.
           </p>
         </div>
       </div>

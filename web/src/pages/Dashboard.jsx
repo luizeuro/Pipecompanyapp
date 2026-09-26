@@ -1,4 +1,4 @@
-// Painel: resumo do dia + cartões dos clientes + painel lateral de alertas.
+// Contas de anúncio: resumo do tráfego + cartões dos clientes + painel lateral de alertas.
 // Os números dos cartões de resumo filtram a lista com um clique.
 import { useMemo, useState } from 'react'
 import { AlertOctagon, Clock, ListTodo, TrendingUp, Users, Wallet } from 'lucide-react'
@@ -33,7 +33,7 @@ export default function Dashboard() {
   return (
     <>
       <PageHeader
-        title="Painel"
+        title="Contas de anúncio"
         subtitle={
           lastCheck
             ? `Última verificação geral ${timeAgo(lastCheck.at)} · ${lastCheck.checked} cliente(s)`

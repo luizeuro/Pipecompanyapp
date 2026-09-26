@@ -1,8 +1,9 @@
-// Página de um cliente: contas (versão detalhada), gráfico de saldo e abas
-// com otimizações, pendências e alertas só dele.
+// Ficha do cliente: saúde, contrato, contatos, contas de anúncio (versão
+// detalhada), gráfico de saldo e abas com a linha do tempo (contatos +
+// otimizações), otimizações, pendências e alertas só dele.
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Check, Pencil, Plus, Trash2, UserRound } from 'lucide-react'
+import { ArrowLeft, Check, MessageSquarePlus, Pencil, Plus, Trash2, UserRound } from 'lucide-react'
 import { api } from '../lib/api.js'
 import { useData } from '../lib/data.jsx'
 import { CLIENT_STATUS, categoryLabel, ALERT_TYPES } from '../lib/constants.js'
@@ -14,10 +15,17 @@ import ClientForm from '../components/ClientForm.jsx'
 import OptimizationForm from '../components/OptimizationForm.jsx'
 import PendenciaForm from '../components/PendenciaForm.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import ContactsCard from '../components/ContactsCard.jsx'
+import ContractCard from '../components/ContractCard.jsx'
+import InteractionForm from '../components/InteractionForm.jsx'
+import Timeline from '../components/Timeline.jsx'
 import { useToast } from '../components/Toast.jsx'
 import {
   cx,
   EmptyState,
+  HealthBadge,
+  HealthReasons,
+  LastContactBadge,
   LevelBadge,
   OptimizationBadge,
   PlatformBadge,
@@ -36,7 +44,7 @@ export default function ClientDetail() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [modal, setModal] = useState(null) // {type, item}
-  const tab = params.get('aba') || 'otimizacoes'
+  const tab = params.get('aba') || 'linha'
 
   const load = useCallback(async () => {
     try {
@@ -72,7 +80,7 @@ export default function ClientDetail() {
     )
   }
 
-  const { client: c, snapshots, optimizations, pendencias, alerts } = data
+  const { client: c, snapshots, optimizations, pendencias, alerts, contacts, interactions } = data
   const openPend = pendencias.filter((p) => p.status === 'open')
   const openAlerts = alerts.filter((a) => !a.resolved_at)
   const today = new Date().toISOString().slice(0, 10)
@@ -133,6 +141,7 @@ export default function ClientDetail() {
           <h1 className="text-2xl font-bold tracking-tight text-brand-800 dark:text-white">{c.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <LevelBadge level={c.status === 'active' ? 'ok' : 'never'}>{CLIENT_STATUS[c.status]?.label}</LevelBadge>
+            <HealthBadge health={c.health} showScore />
             {(c.tags || []).map((t) => (
               <TagChip key={t} id={t} />
             ))}
@@ -141,6 +150,9 @@ export default function ClientDetail() {
                 <UserRound className="h-3.5 w-3.5" /> {c.manager}
               </span>
             )}
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <LastContactBadge date={c.last_contact_at} />
             <OptimizationBadge date={c.last_optimization_at} prefix="Otimização: " />
           </div>
           <p className="muted mt-2 text-xs">
@@ -150,6 +162,9 @@ export default function ClientDetail() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-primary" onClick={() => setModal({ type: 'contact' })}>
+            <MessageSquarePlus className="h-4 w-4" /> Registrar contato
+          </button>
           <CheckNowButton clientId={c.id} onDone={load} />
           <button type="button" className="btn-secondary" onClick={() => setModal({ type: 'edit-client' })}>
             <Pencil className="h-4 w-4" /> Editar
@@ -160,6 +175,25 @@ export default function ClientDetail() {
         </div>
       </div>
 
+      <div className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-4">
+          <ContractCard client={c} onEdit={() => setModal({ type: 'edit-client' })} />
+        </div>
+        <div className="space-y-4">
+          {c.health && (
+            <section className="card px-4 py-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 className="section-title">Saúde do cliente</h2>
+                <HealthBadge health={c.health} showScore />
+              </div>
+              <HealthReasons health={c.health} />
+            </section>
+          )}
+          <ContactsCard clientId={c.id} contacts={contacts} onChanged={load} />
+        </div>
+      </div>
+
+      <h2 className="section-title mb-2">Contas de anúncio</h2>
       {platforms.length > 0 ? (
         <div className={cx('mb-6 grid gap-4', platforms.length === 2 && 'lg:grid-cols-2')}>
           {platforms.map(([p, s, level, label]) => (
@@ -195,11 +229,17 @@ export default function ClientDetail() {
           value={tab}
           onChange={(v) => setParams({ aba: v }, { replace: true })}
           tabs={[
+            { id: 'linha', label: 'Linha do tempo', count: interactions.length },
             { id: 'otimizacoes', label: 'Otimizações', count: optimizations.length },
             { id: 'pendencias', label: 'Pendências', count: openPend.length },
             { id: 'alertas', label: 'Alertas', count: openAlerts.length },
           ]}
         />
+        {tab === 'linha' && (
+          <button type="button" className="btn-primary" onClick={() => setModal({ type: 'contact' })}>
+            <MessageSquarePlus className="h-4 w-4" /> Registrar contato
+          </button>
+        )}
         {tab === 'otimizacoes' && (
           <button type="button" className="btn-primary" onClick={() => setModal({ type: 'opt' })}>
             <Plus className="h-4 w-4" /> Registrar otimização
@@ -213,6 +253,14 @@ export default function ClientDetail() {
       </div>
 
       <div className="card overflow-hidden">
+        {tab === 'linha' && (
+          <Timeline
+            interactions={interactions}
+            optimizations={optimizations}
+            onChanged={reloadAll}
+            emptyText="Registre reuniões, ligações, WhatsApp e relatórios enviados: o último contato alimenta a saúde do cliente."
+          />
+        )}
         {tab === 'otimizacoes' &&
           (optimizations.length ? (
             <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -325,6 +373,7 @@ export default function ClientDetail() {
       </div>
 
       <ClientForm open={modal?.type === 'edit-client'} client={c} onClose={closeModal} onSaved={reloadAll} />
+      <InteractionForm open={modal?.type === 'contact'} clientId={c.id} targetName={c.name} onClose={closeModal} onSaved={reloadAll} />
       <OptimizationForm open={modal?.type === 'opt'} optimization={modal?.item} clientId={c.id} onClose={closeModal} onSaved={reloadAll} />
       <PendenciaForm open={modal?.type === 'pend'} pendencia={modal?.item} clientId={c.id} onClose={closeModal} onSaved={reloadAll} />
       <ConfirmDialog
