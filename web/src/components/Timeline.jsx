@@ -9,7 +9,7 @@ import { dateBR, daysUntil, relativeDay } from '../lib/format.js'
 import { KIND_ICONS } from './kindIcons.js'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import InteractionForm from './InteractionForm.jsx'
-import { cx, EmptyState, PlatformBadge } from './ui.jsx'
+import { AgentBadge, cx, EmptyState, PlatformBadge } from './ui.jsx'
 import { useToast } from './Toast.jsx'
 
 const KIND_TONE = {
@@ -81,6 +81,7 @@ export default function Timeline({ interactions, optimizations = [], onChanged, 
                   {type === 'optimization' && <PlatformBadge platform={item.platform} />}
                   <span className="tabular text-slate-400">{dateBR(item.happened_at || item.performed_at)}</span>
                   {item.created_by && <span className="text-slate-400">· {item.created_by}</span>}
+                  <AgentBadge name={item.created_by} />
                 </div>
                 <p className="mt-0.5 whitespace-pre-line text-sm text-brand-800 dark:text-slate-100">{item.summary || item.description}</p>
                 {type === 'interaction' && item.next_step && (

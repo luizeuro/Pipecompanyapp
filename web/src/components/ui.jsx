@@ -1,12 +1,27 @@
 // Peças visuais pequenas usadas em várias telas (selos, chips, spinner,
 // estado vazio, cabeçalho de página). Centralizadas pra manter o mesmo visual.
-import { AlertOctagon, AlertTriangle, Info, Loader2 } from 'lucide-react'
+import { AlertOctagon, AlertTriangle, Bot, Info, Loader2 } from 'lucide-react'
 import { LEVEL_STYLES, daysSince, urgencyLevel, optimizationLabel } from '../lib/urgency.js'
 import { getTag, TAG_COLOR_CLASSES } from '../lib/tags.js'
 import { PLATFORMS, SEVERITY } from '../lib/constants.js'
 
 export function cx(...classes) {
   return classes.filter(Boolean).join(' ')
+}
+
+// Registros feitos por agente (Hermes) chegam com created_by "<nome> (agente)".
+export const isAgent = (name) => typeof name === 'string' && name.endsWith('(agente)')
+
+export function AgentBadge({ name }) {
+  if (!isAgent(name)) return null
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-md bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700 dark:bg-violet-500/15 dark:text-violet-300"
+      title={`Feito por ${name}`}
+    >
+      <Bot className="h-3 w-3" aria-hidden="true" /> agente
+    </span>
+  )
 }
 
 export function Spinner({ className = 'h-4 w-4' }) {
