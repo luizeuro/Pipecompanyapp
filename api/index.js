@@ -3,7 +3,7 @@
 // dev/server.js sobe este mesmo app numa porta.
 import express from 'express'
 import cookieParser from 'cookie-parser'
-import { getDb, unwrap, dbMode } from '../lib/db.js'
+import { getDb, unwrap, dbMode, supabaseAuthMode } from '../lib/db.js'
 import {
   requireAuth,
   requireAdmin,
@@ -156,7 +156,16 @@ app.get('/api/auth/status', async (req, res) => {
       code: 'DB_NOT_CONFIGURED',
     })
   }
-  const users = unwrap(await getDb().from('users').select('id').limit(1))
+  const db = getDb()
+  // No modo "segredo do backend", segredo errado não dá erro: o RLS só devolve
+  // lista vazia, e o app acharia que é o primeiro acesso. Confere antes.
+  if (supabaseAuthMode() === 'backend_secret') {
+    const ok = unwrap(await db.rpc('pipe_is_backend'))
+    if (ok !== true) {
+      throw httpError(503, 'O banco recusou o acesso: confira SUPABASE_BACKEND_SECRET na Vercel e no Supabase.', 'DB_SECRET_MISMATCH')
+    }
+  }
+  const users = unwrap(await db.from('users').select('id').limit(1))
   res.json({ db: mode, needsSetup: users.length === 0, turnstile: turnstileEnabled() })
 })
 
@@ -206,7 +215,9 @@ app.post('/api/auth/logout', (req, res) => {
 })
 
 // Rota do cron: protegida pelo CRON_SECRET, não pela sessão de usuário.
-app.post('/api/cron/check', async (req, res) => {
+// O Cron da Vercel chama com GET e manda "Authorization: Bearer <CRON_SECRET>"
+// sozinho (ver "crons" no vercel.json); POST fica pra disparo manual/externo.
+async function cronCheck(req, res) {
   const secret = process.env.CRON_SECRET
   const auth = req.get('authorization') || ''
   if (!secret || !safeEqual(auth, `Bearer ${secret}`)) throw httpError(401, 'Não autorizado.')
@@ -221,7 +232,9 @@ app.post('/api/cron/check', async (req, res) => {
   await pruneHistory().catch(() => {})
   const { newAlerts, ...summary } = result
   res.json({ ...summary, email })
-})
+}
+app.get('/api/cron/check', cronCheck)
+app.post('/api/cron/check', cronCheck)
 
 // ---------------------------------------------------------------------------
 // Daqui pra baixo: só usuário logado
