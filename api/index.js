@@ -3,7 +3,7 @@
 // dev/server.js sobe este mesmo app numa porta.
 import express from 'express'
 import cookieParser from 'cookie-parser'
-import { getDb, unwrap, dbMode, supabaseAuthMode } from '../lib/db.js'
+import { getDb, unwrap, dbMode } from '../lib/db.js'
 import {
   requireAuth,
   requireAdmin,
@@ -156,16 +156,7 @@ app.get('/api/auth/status', async (req, res) => {
       code: 'DB_NOT_CONFIGURED',
     })
   }
-  const db = getDb()
-  // No modo "segredo do backend", segredo errado não dá erro: o RLS só devolve
-  // lista vazia, e o app acharia que é o primeiro acesso. Confere antes.
-  if (supabaseAuthMode() === 'backend_secret') {
-    const ok = unwrap(await db.rpc('pipe_is_backend'))
-    if (ok !== true) {
-      throw httpError(503, 'O banco recusou o acesso: confira SUPABASE_BACKEND_SECRET na Vercel e no Supabase.', 'DB_SECRET_MISMATCH')
-    }
-  }
-  const users = unwrap(await db.from('users').select('id').limit(1))
+  const users = unwrap(await getDb().from('users').select('id').limit(1))
   res.json({ db: mode, needsSetup: users.length === 0, turnstile: turnstileEnabled() })
 })
 
