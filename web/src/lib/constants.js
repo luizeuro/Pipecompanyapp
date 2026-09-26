@@ -95,3 +95,12 @@ export const LINK_FIELDS = [
   { key: 'proposta', label: 'Proposta comercial', placeholder: 'https://…' },
   { key: 'outro', label: 'Outro link', placeholder: 'https://…' },
 ]
+
+// Relatórios e análises (publicados pela equipe ou pelo agente Hermes).
+export const REPORT_KINDS = [
+  { id: 'report', label: 'Relatório' },
+  { id: 'analysis', label: 'Análise' },
+  { id: 'daily', label: 'Resumo do dia' },
+]
+const reportKindById = new Map(REPORT_KINDS.map((k) => [k.id, k]))
+export const reportKindLabel = (id) => reportKindById.get(id)?.label || id
