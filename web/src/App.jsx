@@ -17,7 +17,7 @@ import Pendencias from './pages/Pendencias.jsx'
 import Alerts from './pages/Alerts.jsx'
 import Settings from './pages/Settings.jsx'
 
-const SETUP_CODES = ['DB_NOT_CONFIGURED', 'DB_NOT_MIGRATED']
+const SETUP_CODES = ['DB_NOT_CONFIGURED', 'DB_NOT_MIGRATED', 'DB_SECRET_MISMATCH']
 
 export default function App() {
   const [state, setState] = useState({ loading: true })
