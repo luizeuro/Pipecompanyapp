@@ -12,7 +12,7 @@ import { useToast } from '../components/Toast.jsx'
 import { cx, Field, PageHeader, Spinner } from '../components/ui.jsx'
 
 const INTEGRATIONS = [
-  { key: 'db', label: 'Banco de dados (Supabase)', vars: 'SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_PUBLISHABLE_KEY + SUPABASE_BACKEND_SECRET)' },
+  { key: 'db', label: 'Banco de dados (Supabase)', vars: 'SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY' },
   { key: 'meta', label: 'Meta Ads', vars: 'META_SYSTEM_USER_TOKEN (e META_APP_SECRET, se o app exigir)' },
   { key: 'google', label: 'Google Ads', vars: 'GOOGLE_ADS_DEVELOPER_TOKEN, _CLIENT_ID, _CLIENT_SECRET, _REFRESH_TOKEN, _LOGIN_CUSTOMER_ID' },
   { key: 'email', label: 'E-mail de alertas (Resend)', vars: 'RESEND_API_KEY, ALERT_EMAIL_FROM, ALERT_EMAIL_TO' },
