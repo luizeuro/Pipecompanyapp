@@ -1,9 +1,14 @@
-# Pipe Company · Monitor de contas
+# Pipe Company · CRM e monitor de contas
 
-Painel interno da Pipe Company para acompanhar os clientes de tráfego pago:
-saldo das contas Meta Ads e Google Ads (e quantos dias ele ainda dura),
-veiculação, resultados dos últimos 7 dias, otimizações feitas, pendências e
-alertas automáticos por e-mail.
+App interno da Pipe Company com duas partes:
+
+- **CRM enxuto**: tela *Hoje* (o que fazer agora), funil comercial em quadro,
+  ficha completa de cada cliente (contrato, contatos, links, linha do tempo),
+  saúde do cliente (risco de cancelamento) e *Números* da agência (receita
+  recorrente, ticket médio, taxa de fechamento, cancelamentos).
+- **Monitor de tráfego**: saldo das contas Meta Ads e Google Ads (e quantos
+  dias ele ainda dura), veiculação, resultados dos últimos 7 dias,
+  otimizações, pendências e alertas automáticos por e-mail.
 
 ## Como funciona
 
@@ -20,13 +25,31 @@ alertas automáticos por e-mail.
 api/index.js          todas as rotas da API
 lib/                  integrações (meta.js, google.js), alertas, e-mail, criptografia, banco
 supabase/migrations/  schema SQL (rodar uma vez no Supabase)
-web/src/pages/        uma página por aba (Painel, Clientes, Otimizações, Pendências, Alertas, Configurações)
+web/src/pages/        uma página por aba (Hoje, Funil, Clientes, Números, Contas, Otimizações, Pendências, Alertas, Configurações)
 web/src/components/   peças compartilhadas (cartão do cliente, painel de alertas, formulários, gráfico)
 web/src/lib/          filtros, etiquetas, régua de urgência, formatação, chamadas à API
 dev/server.js         sobe a API localmente
 ```
 
-### Regras do painel
+### Regras do CRM
+
+- **Saúde do cliente** (`lib/health.js`, calculada no backend): nota de 0 a
+  100 que perde pontos por falta de contato e de otimização (mesma régua de
+  dias abaixo), alertas abertos, pendências atrasadas e saldo acabando.
+  75+ = Saudável, 50–74 = Atenção, abaixo de 50 = Em risco. Cliente com até
+  14 dias de contrato não perde ponto por "nunca teve contato/otimização".
+- **Último contato**: a interação mais recente da linha do tempo que não seja
+  nota interna (`recalcLastContact` em `lib/summary.js`).
+- **Funil**: Lead → Reunião → Proposta enviada → Negociação → Fechado/Perdido.
+  "Fechou!" cria o cliente com honorário, verba, contato, Instagram, link da
+  proposta e todo o histórico da negociação.
+- **Hoje**: próximos passos com data (de contatos e do funil) e pendências
+  com prazo, em atrasados / hoje / próximos 7 dias.
+- **Números**: só valores da ficha (honorário, verba, datas); não há controle
+  de pagamento. Receita recorrente de um mês = honorários de quem já tinha
+  começado e ainda não tinha cancelado no fim do mês.
+
+### Regras do monitor de tráfego
 
 - **Saldo**: crítico quando dura menos de 3 dias (no ritmo médio dos últimos
   7 dias) ou fica abaixo do mínimo configurado no cliente; atenção quando dura
@@ -52,7 +75,7 @@ dev/server.js         sobe a API localmente
 ## Colocar no ar
 
 1. **Supabase**: crie o projeto (região São Paulo) e rode, no *SQL Editor*,
-   `supabase/migrations/001_init.sql`.
+   `supabase/migrations/001_init.sql` e depois `002_crm.sql`.
 2. **Vercel**: importe este repositório (Framework Preset: *Other*; o
    `vercel.json` já define build, rotas e o cron) e crie as variáveis de
    ambiente listadas em `.env.example`. O mínimo para abrir:
