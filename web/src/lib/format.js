@@ -103,3 +103,39 @@ export function normalizeSearch(text) {
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
 }
+
+// Monta o endereço de um link da ficha a partir do que foi digitado
+// ("@perfil", "site.com.br" ou URL completa).
+export function linkHref(key, value) {
+  if (!value) return null
+  const v = String(value).trim()
+  if (/^https?:\/\//i.test(v)) return v
+  if (key === 'instagram') return `https://instagram.com/${v.replace(/^@/, '').replace(/^instagram\.com\//i, '')}`
+  return `https://${v}`
+}
+
+// Link de conversa no WhatsApp (assume Brasil quando vier sem o 55).
+export function whatsappHref(phone) {
+  const digits = String(phone ?? '').replace(/\D/g, '')
+  if (digits.length < 10) return null
+  return `https://wa.me/${digits.length <= 11 ? `55${digits}` : digits}`
+}
+
+// Dias até uma data AAAA-MM-DD (negativo = já passou), no fuso do navegador.
+export function daysUntil(isoDate) {
+  if (!isoDate) return null
+  const target = new Date(`${String(isoDate).slice(0, 10)}T12:00:00`)
+  const today = new Date()
+  today.setHours(12, 0, 0, 0)
+  return Math.round((target - today) / 86400000)
+}
+
+// "hoje", "amanhã", "ontem", "em 3 dias", "há 2 dias" — pra prazos e follow-ups.
+export function relativeDay(isoDate) {
+  const d = daysUntil(isoDate)
+  if (d == null) return ''
+  if (d === 0) return 'hoje'
+  if (d === 1) return 'amanhã'
+  if (d === -1) return 'ontem'
+  return d > 0 ? `em ${d} dias` : `há ${-d} dias`
+}

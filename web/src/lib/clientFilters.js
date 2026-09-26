@@ -9,6 +9,8 @@ export const CLIENT_FILTERS = [
   { id: 'active', label: 'Ativos' },
   { id: 'all', label: 'Todos' },
   { id: 'attention', label: 'Precisam de atenção' },
+  { id: 'at_risk', label: 'Em risco de cancelar' },
+  { id: 'no_contact', label: 'Sem contato há 15+ dias' },
   { id: 'low_balance', label: 'Saldo acabando' },
   { id: 'alerts', label: 'Com alerta aberto' },
   { id: 'pendencias', label: 'Com pendências' },
@@ -20,6 +22,9 @@ export const CLIENT_FILTERS = [
 
 export const CLIENT_SORTS = [
   { id: 'urgency', label: 'Mais urgentes primeiro' },
+  { id: 'health', label: 'Pior saúde primeiro' },
+  { id: 'fee', label: 'Maior honorário' },
+  { id: 'last_contact', label: 'Contato mais antigo' },
   { id: 'name', label: 'Nome (A–Z)' },
   { id: 'days_left', label: 'Menos dias de saldo' },
   { id: 'last_opt', label: 'Otimização mais antiga' },
@@ -30,6 +35,10 @@ export const CLIENT_SORTS = [
 export const isLowBalance = (c) => c.balance_level === 'critical' || c.balance_level === 'warn'
 export const isStale = (c) => {
   const d = daysSince(c.last_optimization_at)
+  return d == null || d > URGENCY_OK_MAX
+}
+export const isNoContact = (c) => {
+  const d = daysSince(c.last_contact_at)
   return d == null || d > URGENCY_OK_MAX
 }
 export const needsAttention = (c) =>
@@ -51,6 +60,10 @@ export function applyClientFilter(clients, filterId) {
       return clients.filter((c) => c.open_alerts_count > 0)
     case 'pendencias':
       return clients.filter((c) => c.open_pendencias_count > 0)
+    case 'at_risk':
+      return clients.filter((c) => c.health?.level === 'critical')
+    case 'no_contact':
+      return clients.filter((c) => c.status === 'active' && isNoContact(c))
     case 'stale':
       return clients.filter((c) => c.status === 'active' && isStale(c))
     case 'meta':
@@ -95,6 +108,17 @@ export function applyClientSort(clients, sortId) {
       )
     case 'pendencias':
       return list.sort((a, b) => b.open_pendencias_count - a.open_pendencias_count || byName(a, b))
+    case 'health':
+      // Sem nota (pausado/encerrado) vai pro fim.
+      return list.sort((a, b) => nullsLast(a.health?.score, 999) - nullsLast(b.health?.score, 999) || byName(a, b))
+    case 'fee':
+      return list.sort((a, b) => (Number(b.fee_monthly) || 0) - (Number(a.fee_monthly) || 0) || byName(a, b))
+    case 'last_contact':
+      return list.sort(
+        (a, b) =>
+          nullsLast(a.last_contact_at && new Date(a.last_contact_at).getTime(), 0) -
+            nullsLast(b.last_contact_at && new Date(b.last_contact_at).getTime(), 0) || byName(a, b),
+      )
     case 'spend':
       return list.sort((a, b) => (b.spend_7d_total || 0) - (a.spend_7d_total || 0) || byName(a, b))
     case 'urgency':
