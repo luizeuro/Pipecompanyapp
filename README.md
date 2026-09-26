@@ -10,7 +10,7 @@ alertas automáticos por e-mail.
 | Camada | Tecnologia |
 |---|---|
 | Backend | Node.js + Express, uma função serverless só (`api/index.js`) na Vercel |
-| Banco | Supabase (Postgres), acessado só pelo backend |
+| Banco | Supabase (Postgres), acessado só pelo backend com a service role key (RLS ligado, sem policies: a chave pública não acessa nada) |
 | Frontend | React + Vite + Tailwind (`web/`), modo claro e escuro |
 | Agendamento | Cron da Vercel, 3x por dia (`crons` no `vercel.json`) |
 | E-mail | Resend |
@@ -52,17 +52,12 @@ dev/server.js         sobe a API localmente
 ## Colocar no ar
 
 1. **Supabase**: crie o projeto (região São Paulo) e rode, no *SQL Editor*,
-   `supabase/migrations/001_init.sql` e depois `002_backend_access.sql`.
+   `supabase/migrations/001_init.sql`.
 2. **Vercel**: importe este repositório (Framework Preset: *Other*; o
    `vercel.json` já define build, rotas e o cron) e crie as variáveis de
-   ambiente listadas em `.env.example`. Para o banco, use uma das formas:
-   - `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`; ou
-   - `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY` + `SUPABASE_BACKEND_SECRET`,
-     gravando o mesmo segredo no banco (instrução no topo de
-     `supabase/migrations/002_backend_access.sql`). É a forma usada neste
-     projeto: a chave pública sozinha não acessa nada.
-
-   Também: `JWT_SECRET`, `ENCRYPTION_KEY` e `CRON_SECRET`. Para gerar:
+   ambiente listadas em `.env.example`. O mínimo para abrir:
+   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (a chave secreta do Supabase),
+   `JWT_SECRET`, `ENCRYPTION_KEY` e `CRON_SECRET`. Para gerar os segredos:
    `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 3. Abra o app: a primeira tela cria o acesso de administrador. O resto da
    equipe é cadastrado em *Configurações → Equipe*.
