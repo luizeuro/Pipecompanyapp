@@ -22,10 +22,10 @@ App interno da Pipe Company com duas partes:
 | Hospedagem | Vercel, deploy automático a cada commit na `main` |
 
 ```
-api/index.js          todas as rotas da API
-lib/                  integrações (meta.js, google.js), alertas, e-mail, criptografia, banco
+api/index.js          todas as rotas da API (inclui /api/mcp para agentes)
+lib/                  regras do CRM (crm.js), ferramentas MCP (mcp.js), integrações, alertas, e-mail, banco
 supabase/migrations/  schema SQL (rodar uma vez no Supabase)
-web/src/pages/        uma página por aba (Hoje, Funil, Clientes, Números, Contas, Otimizações, Pendências, Alertas, Configurações)
+web/src/pages/        uma página por aba (Hoje, Funil, Clientes, Relatórios, Números, Contas, Otimizações, Pendências, Alertas, Configurações)
 web/src/components/   peças compartilhadas (cartão do cliente, painel de alertas, formulários, gráfico)
 web/src/lib/          filtros, etiquetas, régua de urgência, formatação, chamadas à API
 dev/server.js         sobe a API localmente
@@ -48,6 +48,39 @@ dev/server.js         sobe a API localmente
 - **Números**: só valores da ficha (honorário, verba, datas); não há controle
   de pagamento. Receita recorrente de um mês = honorários de quem já tinha
   começado e ainda não tinha cancelado no fim do mês.
+
+### Agente (Hermes) via MCP
+
+O CRM expõe um servidor **MCP** em `/api/mcp` (Streamable HTTP, sem sessão)
+para agentes como o [Hermes Agent](https://hermes-agent.nousresearch.com/)
+lerem e alimentarem o CRM. As ferramentas ficam em `lib/mcp.js` e chamam as
+mesmas funções de `lib/crm.js` que a tela usa.
+
+- **Acesso**: chave de API criada em *Configurações → Agentes e API* (só
+  admin). O banco guarda só o hash; a chave aparece uma vez. Pode ser
+  "leitura e escrita" ou "só leitura", e revogada a qualquer momento.
+- **Ler**: `listar_clientes`, `ver_cliente`, `desempenho_contas`,
+  `agenda_hoje`, `funil_comercial`, `ver_lead`, `numeros_agencia`,
+  `listar_tarefas`, `listar_relatorios`.
+- **Escrever**: `criar_tarefa`, `concluir_tarefa`, `registrar_contato`,
+  `registrar_otimizacao`, `publicar_relatorio`, `criar_lead`, `atualizar_lead`.
+- **Limites**: agente nunca apaga, não mexe em equipe/senhas/chaves/
+  configurações e não fecha contrato (virar cliente é só pela equipe). Tudo que
+  ele grava sai com autor "<nome> (agente)" e o selo "agente" na tela.
+- **Hermes**: em `~/.hermes/config.yaml`:
+
+  ```yaml
+  mcp_servers:
+    pipe_crm:
+      url: "https://pipecompanyapp.vercel.app/api/mcp"
+      headers:
+        Authorization: "Bearer ${PIPE_CRM_API_KEY}"
+  ```
+
+  e a chave em `~/.hermes/.env` (`PIPE_CRM_API_KEY=...`). Teste com
+  `hermes mcp test pipe_crm`. A skill `pipe-crm` (em `~/.hermes/skills`)
+  ensina as rotinas (relatório semanal, resumo do dia, análise das contas,
+  tarefas por mensagem).
 
 ### Regras do monitor de tráfego
 
@@ -75,7 +108,7 @@ dev/server.js         sobe a API localmente
 ## Colocar no ar
 
 1. **Supabase**: crie o projeto (região São Paulo) e rode, no *SQL Editor*,
-   `supabase/migrations/001_init.sql` e depois `002_crm.sql`.
+   `supabase/migrations/001_init.sql`, depois `002_crm.sql` e `003_agentes.sql`.
 2. **Vercel**: importe este repositório (Framework Preset: *Other*; o
    `vercel.json` já define build, rotas e o cron) e crie as variáveis de
    ambiente listadas em `.env.example`. O mínimo para abrir:
