@@ -9,6 +9,9 @@ import { ToastProvider } from './components/Toast.jsx'
 import { Spinner } from './components/ui.jsx'
 import Login from './pages/Login.jsx'
 import SetupRequired from './pages/SetupRequired.jsx'
+import Today from './pages/Today.jsx'
+import Funnel from './pages/Funnel.jsx'
+import Metrics from './pages/Metrics.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Clients from './pages/Clients.jsx'
 import ClientDetail from './pages/ClientDetail.jsx'
@@ -77,7 +80,10 @@ export default function App() {
           <DataProvider>
             <Layout user={state.user} onLogout={logout}>
               <Routes>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={<Today />} />
+                <Route path="/funil" element={<Funnel />} />
+                <Route path="/numeros" element={<Metrics />} />
+                <Route path="/contas" element={<Dashboard />} />
                 <Route path="/clientes" element={<Clients />} />
                 <Route path="/clientes/:id" element={<ClientDetail />} />
                 <Route path="/otimizacoes" element={<Optimizations />} />
