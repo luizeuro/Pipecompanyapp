@@ -27,8 +27,9 @@ import { normalizeGoogleCustomerId, googleConfigured } from '../lib/google.js'
 import { runChecks, pruneHistory } from '../lib/checks.js'
 import { notifyAfterCheck } from '../lib/notify.js'
 import { emailConfigured, sendEmail, renderAlertsEmail } from '../lib/email.js'
-import { recalcLastOptimization } from '../lib/summary.js'
-import { httpError, cleanText } from '../lib/util.js'
+import { recalcLastOptimization, recalcLastContact } from '../lib/summary.js'
+import { clientHealth } from '../lib/health.js'
+import { httpError, cleanText, dateInTz, shiftDate } from '../lib/util.js'
 
 const app = express()
 app.disable('x-powered-by')
@@ -48,6 +49,13 @@ app.use('/api', (req, res, next) => {
 const CLIENT_STATUSES = ['active', 'paused', 'churned']
 const RESULT_METRICS = ['auto', 'messages', 'leads', 'purchases']
 const OPT_PLATFORMS = ['meta', 'google', 'both', 'other']
+const LEAD_STAGES = ['lead', 'meeting', 'proposal', 'negotiation', 'won', 'lost']
+const OPEN_STAGES = ['lead', 'meeting', 'proposal', 'negotiation']
+const INTERACTION_KINDS = ['meeting', 'call', 'whatsapp', 'email', 'report', 'complaint', 'praise', 'note']
+const LINK_KEYS = ['site', 'instagram', 'drive', 'gtm', 'proposta', 'outro']
+
+// "Hoje" no fuso da agência (e não em UTC, que vira o dia às 21h de Brasília).
+const todayLocal = () => dateInTz(new Date(), process.env.CHECK_TIMEZONE || 'America/Sao_Paulo')
 
 function toNumber(value, { allowNull = true } = {}) {
   if (value === '' || value == null) return allowNull ? null : 0
@@ -71,6 +79,22 @@ function toDateOnly(value) {
   return value
 }
 
+function toBool(value) {
+  return value === true || value === 'true' || value === 1
+}
+
+// Links da ficha: só as chaves conhecidas, texto curto. O formato fica livre
+// (URL, @perfil, domínio): a tela monta o endereço na hora de abrir.
+function cleanLinks(value) {
+  const out = {}
+  if (!value || typeof value !== 'object') return out
+  for (const key of LINK_KEYS) {
+    const v = cleanText(value[key], 500)
+    if (v) out[key] = v
+  }
+  return out
+}
+
 // Remove o token criptografado e anexa os níveis de saldo já calculados, pra
 // tela e alerta usarem exatamente a mesma régua (lib/balance.js).
 function serializeClient(c, extras = {}) {
@@ -85,15 +109,24 @@ function serializeClient(c, extras = {}) {
   const spend7d = [c.meta_snapshot, c.google_snapshot]
     .filter((s) => s?.ok)
     .reduce((sum, s) => sum + Number(s.spend_7d || 0), 0)
+  const balance = worstLevel(metaLevel || 'unknown', googleLevel || 'unknown')
   return {
     ...rest,
     has_meta_token: Boolean(tokenEnc),
     meta_level: metaLevel,
     google_level: googleLevel,
-    balance_level: worstLevel(metaLevel || 'unknown', googleLevel || 'unknown'),
+    balance_level: balance,
     min_days_left: daysLeft.length ? Math.min(...daysLeft) : null,
     spend_7d_total: Math.round(spend7d * 100) / 100,
     ...extras,
+    // Saúde calculada no backend (lib/health.js) pra lista, ficha e tela Hoje
+    // mostrarem exatamente a mesma nota.
+    health: clientHealth(c, {
+      criticalAlerts: extras.critical_alerts_count || 0,
+      openAlerts: extras.open_alerts_count || 0,
+      overduePendencias: extras.overdue_pendencias_count || 0,
+      balanceLevel: balance,
+    }),
   }
 }
 
@@ -121,6 +154,18 @@ function clientInput(body, { partial }) {
   }
   if ('balance_alert_threshold' in body) out.balance_alert_threshold = toNumber(body.balance_alert_threshold, { allowNull: false })
   if ('monthly_budget' in body) out.monthly_budget = toNumber(body.monthly_budget)
+  if ('segment' in body) out.segment = cleanText(body.segment, 80)
+  if ('city' in body) out.city = cleanText(body.city, 80)
+  if ('fee_monthly' in body) out.fee_monthly = toNumber(body.fee_monthly)
+  if ('contract_start' in body) out.contract_start = toDateOnly(body.contract_start)
+  if ('renewal_date' in body) out.renewal_date = toDateOnly(body.renewal_date)
+  if ('billing_day' in body) {
+    const day = body.billing_day === '' || body.billing_day == null ? null : Number(body.billing_day)
+    if (day != null && !(Number.isInteger(day) && day >= 1 && day <= 31)) throw httpError(400, 'Dia de cobrança deve ser de 1 a 31.')
+    out.billing_day = day
+  }
+  if ('links' in body) out.links = cleanLinks(body.links)
+  if ('access_notes' in body) out.access_notes = cleanText(body.access_notes, 2000)
   if (typeof body.meta_access_token === 'string' && body.meta_access_token.trim()) {
     out.meta_access_token_enc = encrypt(body.meta_access_token.trim())
   }
@@ -313,7 +358,7 @@ app.get('/api/clients', async (req, res) => {
     db.from('alerts').select('client_id,severity').is('resolved_at', null),
   ]).then((results) => results.map(unwrap))
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayLocal()
   const pend = new Map()
   for (const p of pendencias) {
     const entry = pend.get(p.client_id) || { open: 0, overdue: 0 }
@@ -352,7 +397,7 @@ app.get('/api/clients/:id', async (req, res) => {
   const db = getDb()
   const client = await getClientOr404(db, req.params.id)
   const since = new Date(Date.now() - 30 * 864e5).toISOString()
-  const [snapshots, optimizations, pendencias, alerts] = await Promise.all([
+  const [snapshots, optimizations, pendencias, alerts, contacts, interactions] = await Promise.all([
     db
       .from('account_snapshots')
       .select('platform,checked_at,ok,balance,spend_today,spend_yesterday,spend_7d,results_7d,active_campaigns')
@@ -362,13 +407,17 @@ app.get('/api/clients/:id', async (req, res) => {
     db.from('optimizations').select('*').eq('client_id', client.id).order('performed_at', { ascending: false }).limit(200),
     db.from('pendencias').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(200),
     db.from('alerts').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(100),
+    db.from('contacts').select('*').eq('client_id', client.id).order('name'),
+    db.from('interactions').select('*').eq('client_id', client.id).order('happened_at', { ascending: false }).limit(300),
   ]).then((results) => results.map(unwrap))
 
+  const today = todayLocal()
   const openPend = pendencias.filter((p) => p.status === 'open')
   const openAlerts = alerts.filter((a) => !a.resolved_at)
   res.json({
     client: serializeClient(client, {
       open_pendencias_count: openPend.length,
+      overdue_pendencias_count: openPend.filter((p) => p.due_date && p.due_date < today).length,
       open_alerts_count: openAlerts.length,
       critical_alerts_count: openAlerts.filter((a) => a.severity === 'critical').length,
     }),
@@ -376,13 +425,19 @@ app.get('/api/clients/:id', async (req, res) => {
     optimizations,
     pendencias,
     alerts,
+    contacts,
+    interactions,
   })
 })
 
 app.patch('/api/clients/:id', async (req, res) => {
   const db = getDb()
-  const current = await getClientOr404(db, req.params.id, 'id,meta_ad_account_id,google_ads_customer_id')
+  const current = await getClientOr404(db, req.params.id, 'id,status,meta_ad_account_id,google_ads_customer_id')
   const patch = clientInput(req.body, { partial: true })
+  // Data do cancelamento alimenta a métrica "cancelamentos no mês".
+  if ('status' in patch && patch.status !== current.status) {
+    patch.churned_at = patch.status === 'churned' ? new Date().toISOString() : null
+  }
   // Trocou/removeu a conta: o snapshot antigo é de outra conta, então descarta.
   // Os alertas dela se resolvem sozinhos na próxima verificação.
   if ('meta_ad_account_id' in patch && patch.meta_ad_account_id !== current.meta_ad_account_id) patch.meta_snapshot = null
@@ -530,6 +585,296 @@ app.patch('/api/pendencias/:id', async (req, res) => {
 app.delete('/api/pendencias/:id', async (req, res) => {
   unwrap(await getDb().from('pendencias').delete().eq('id', req.params.id))
   res.json({ ok: true })
+})
+
+// ----- Contatos do cliente -----
+
+function contactInput(body, { partial }) {
+  const out = {}
+  if (!partial || 'client_id' in body) {
+    if (!body.client_id) throw httpError(400, 'Cliente não informado.')
+    out.client_id = String(body.client_id)
+  }
+  if (!partial || 'name' in body) {
+    const name = cleanText(body.name, 120)
+    if (!name) throw httpError(400, 'Informe o nome do contato.')
+    out.name = name
+  }
+  if ('role' in body) out.role = cleanText(body.role, 80)
+  if ('phone' in body) out.phone = cleanText(body.phone, 40)
+  if ('email' in body) out.email = cleanText(body.email, 160)
+  if ('is_decision_maker' in body) out.is_decision_maker = toBool(body.is_decision_maker)
+  if ('notes' in body) out.notes = cleanText(body.notes, 1000)
+  return out
+}
+
+app.post('/api/contacts', async (req, res) => {
+  const db = getDb()
+  const input = contactInput(req.body, { partial: false })
+  await getClientOr404(db, input.client_id, 'id')
+  const row = unwrap(await db.from('contacts').insert(input).select('*').single())
+  res.status(201).json({ contact: row })
+})
+
+app.patch('/api/contacts/:id', async (req, res) => {
+  const patch = contactInput(req.body, { partial: true })
+  delete patch.client_id
+  const row = unwrap(await getDb().from('contacts').update(patch).eq('id', req.params.id).select('*').maybeSingle())
+  if (!row) throw httpError(404, 'Contato não encontrado.')
+  res.json({ contact: row })
+})
+
+app.delete('/api/contacts/:id', async (req, res) => {
+  unwrap(await getDb().from('contacts').delete().eq('id', req.params.id))
+  res.json({ ok: true })
+})
+
+// ----- Funil comercial (leads) -----
+
+function leadInput(body, { partial }) {
+  const out = {}
+  if (!partial || 'company' in body) {
+    const company = cleanText(body.company, 120)
+    if (!company) throw httpError(400, 'Informe o nome da empresa.')
+    out.company = company
+  }
+  const texts = {
+    contact_name: 120, contact_phone: 40, contact_email: 160, instagram: 120, segment: 80,
+    source: 40, proposal_url: 500, next_step: 200, owner: 80, notes: 4000, lost_reason: 200,
+  }
+  for (const [key, max] of Object.entries(texts)) if (key in body) out[key] = cleanText(body[key], max)
+  if ('fee_proposed' in body) out.fee_proposed = toNumber(body.fee_proposed)
+  if ('media_budget' in body) out.media_budget = toNumber(body.media_budget)
+  if ('next_step_at' in body) out.next_step_at = toDateOnly(body.next_step_at)
+  if ('stage' in body) {
+    if (!LEAD_STAGES.includes(body.stage)) throw httpError(400, 'Etapa inválida.')
+    // Fechar tem rota própria porque cria o cliente junto (POST /api/leads/:id/win).
+    if (body.stage === 'won') throw httpError(400, 'Use "Marcar como fechado" para converter o lead em cliente.')
+    out.stage = body.stage
+  }
+  return out
+}
+
+async function getLeadOr404(db, id) {
+  const lead = unwrap(await db.from('leads').select('*').eq('id', id).maybeSingle())
+  if (!lead) throw httpError(404, 'Lead não encontrado.')
+  return lead
+}
+
+// Lista com a data da última interação de cada lead, calculada em lote.
+app.get('/api/leads', async (req, res) => {
+  const db = getDb()
+  const [leads, interactions] = await Promise.all([
+    db.from('leads').select('*').order('updated_at', { ascending: false }),
+    db.from('interactions').select('lead_id,happened_at').not('lead_id', 'is', null),
+  ]).then((results) => results.map(unwrap))
+  const last = new Map()
+  for (const i of interactions) {
+    if (!last.has(i.lead_id) || i.happened_at > last.get(i.lead_id)) last.set(i.lead_id, i.happened_at)
+  }
+  res.json({ leads: leads.map((l) => ({ ...l, last_interaction_at: last.get(l.id) || null })) })
+})
+
+app.get('/api/leads/:id', async (req, res) => {
+  const db = getDb()
+  const lead = await getLeadOr404(db, req.params.id)
+  const interactions = unwrap(
+    await db.from('interactions').select('*').eq('lead_id', lead.id).order('happened_at', { ascending: false }),
+  )
+  res.json({ lead, interactions })
+})
+
+app.post('/api/leads', async (req, res) => {
+  const input = leadInput(req.body, { partial: false })
+  const row = unwrap(
+    await getDb()
+      .from('leads')
+      .insert({ ...input, stage: input.stage || 'lead', owner: input.owner || req.user.name, created_by: req.user.name })
+      .select('*')
+      .single(),
+  )
+  res.status(201).json({ lead: row })
+})
+
+app.patch('/api/leads/:id', async (req, res) => {
+  const db = getDb()
+  const current = await getLeadOr404(db, req.params.id)
+  const patch = leadInput(req.body, { partial: true })
+  const nowIso = new Date().toISOString()
+  if ('stage' in patch && patch.stage !== current.stage) {
+    patch.stage_changed_at = nowIso
+    patch.lost_at = patch.stage === 'lost' ? nowIso : null
+    if (patch.stage !== 'lost' && !('lost_reason' in patch)) patch.lost_reason = null
+  }
+  patch.updated_at = nowIso
+  const row = unwrap(await db.from('leads').update(patch).eq('id', req.params.id).select('*').single())
+  res.json({ lead: row })
+})
+
+// Apaga o lead e as interações que eram SÓ dele; as que já passaram pro
+// cliente (lead fechado) continuam na linha do tempo do cliente.
+app.delete('/api/leads/:id', async (req, res) => {
+  const db = getDb()
+  await getLeadOr404(db, req.params.id)
+  unwrap(await db.from('interactions').delete().eq('lead_id', req.params.id).is('client_id', null))
+  unwrap(await db.from('interactions').update({ lead_id: null }).eq('lead_id', req.params.id))
+  unwrap(await db.from('leads').delete().eq('id', req.params.id))
+  res.json({ ok: true })
+})
+
+// Fechou: cria o cliente com o que o funil já sabe (honorário, verba,
+// contato, Instagram, link da proposta) e leva o histórico junto.
+app.post('/api/leads/:id/win', async (req, res) => {
+  const db = getDb()
+  const lead = await getLeadOr404(db, req.params.id)
+  if (lead.client_id) {
+    const existing = unwrap(await db.from('clients').select('*').eq('id', lead.client_id).maybeSingle())
+    if (existing) return res.json({ client: serializeClient(existing), lead })
+  }
+  const links = cleanLinks({ instagram: lead.instagram, proposta: lead.proposal_url })
+  const client = unwrap(
+    await db
+      .from('clients')
+      .insert({
+        name: lead.company,
+        manager: lead.owner,
+        segment: lead.segment,
+        fee_monthly: lead.fee_proposed,
+        monthly_budget: lead.media_budget,
+        contract_start: todayLocal(),
+        links,
+        notes: lead.notes,
+        tags: ['onboarding'],
+      })
+      .select('*')
+      .single(),
+  )
+  if (lead.contact_name) {
+    unwrap(
+      await db.from('contacts').insert({
+        client_id: client.id,
+        name: lead.contact_name,
+        phone: lead.contact_phone,
+        email: lead.contact_email,
+        is_decision_maker: true,
+      }),
+    )
+  }
+  unwrap(await db.from('interactions').update({ client_id: client.id }).eq('lead_id', lead.id))
+  const nowIso = new Date().toISOString()
+  const updatedLead = unwrap(
+    await db
+      .from('leads')
+      .update({ stage: 'won', won_at: nowIso, stage_changed_at: nowIso, lost_at: null, client_id: client.id, updated_at: nowIso })
+      .eq('id', lead.id)
+      .select('*')
+      .single(),
+  )
+  await recalcLastContact(client.id)
+  const fresh = unwrap(await db.from('clients').select('*').eq('id', client.id).single())
+  res.status(201).json({ client: serializeClient(fresh), lead: updatedLead })
+})
+
+// ----- Linha do tempo (interações com cliente ou lead) -----
+
+function interactionInput(body, { partial }) {
+  const out = {}
+  if (!partial) {
+    if (!body.client_id && !body.lead_id) throw httpError(400, 'Informe o cliente ou o lead.')
+    if (body.client_id) out.client_id = String(body.client_id)
+    if (body.lead_id) out.lead_id = String(body.lead_id)
+  }
+  if (!partial || 'kind' in body) {
+    const kind = body.kind || 'note'
+    if (!INTERACTION_KINDS.includes(kind)) throw httpError(400, 'Tipo de interação inválido.')
+    out.kind = kind
+  }
+  if (!partial || 'summary' in body) {
+    const summary = cleanText(body.summary, 4000)
+    if (!summary) throw httpError(400, 'Descreva o que aconteceu.')
+    out.summary = summary
+  }
+  if (!partial || 'happened_at' in body) out.happened_at = toDateTime(body.happened_at)
+  if ('next_step' in body) out.next_step = cleanText(body.next_step, 200)
+  if ('next_step_at' in body) out.next_step_at = toDateOnly(body.next_step_at)
+  if ('next_step_done' in body) out.next_step_done = toBool(body.next_step_done)
+  return out
+}
+
+app.post('/api/interactions', async (req, res) => {
+  const db = getDb()
+  const input = interactionInput(req.body, { partial: false })
+  if (input.client_id) await getClientOr404(db, input.client_id, 'id')
+  if (input.lead_id) await getLeadOr404(db, input.lead_id)
+  const row = unwrap(await db.from('interactions').insert({ ...input, created_by: req.user.name }).select('*').single())
+  if (row.client_id) await recalcLastContact(row.client_id)
+  // No funil, o próximo passo registrado na conversa vira o próximo passo do cartão.
+  if (row.lead_id) {
+    const leadPatch = { updated_at: new Date().toISOString() }
+    if (row.next_step_at || row.next_step) {
+      leadPatch.next_step = row.next_step
+      leadPatch.next_step_at = row.next_step_at
+    }
+    unwrap(await db.from('leads').update(leadPatch).eq('id', row.lead_id))
+  }
+  res.status(201).json({ interaction: row })
+})
+
+app.patch('/api/interactions/:id', async (req, res) => {
+  const db = getDb()
+  const before = unwrap(await db.from('interactions').select('client_id').eq('id', req.params.id).maybeSingle())
+  if (!before) throw httpError(404, 'Registro não encontrado.')
+  const row = unwrap(
+    await db.from('interactions').update(interactionInput(req.body, { partial: true })).eq('id', req.params.id).select('*').single(),
+  )
+  await recalcLastContact([before.client_id, row.client_id])
+  res.json({ interaction: row })
+})
+
+app.delete('/api/interactions/:id', async (req, res) => {
+  const db = getDb()
+  const before = unwrap(await db.from('interactions').select('client_id').eq('id', req.params.id).maybeSingle())
+  if (!before) throw httpError(404, 'Registro não encontrado.')
+  unwrap(await db.from('interactions').delete().eq('id', req.params.id))
+  await recalcLastContact(before.client_id)
+  res.json({ ok: true })
+})
+
+// ----- Hoje: o que fazer agora (follow-ups, próximos passos do funil, pendências) -----
+// Janela de 7 dias pra frente; o que está atrasado vem junto (sem limite pra trás).
+app.get('/api/today', async (req, res) => {
+  const db = getDb()
+  const today = todayLocal()
+  const horizon = shiftDate(today, 7)
+  const [followups, leads, pendencias, names] = await Promise.all([
+    db
+      .from('interactions')
+      .select('id,client_id,lead_id,kind,summary,next_step,next_step_at,happened_at')
+      .eq('next_step_done', false)
+      .not('next_step_at', 'is', null)
+      .lte('next_step_at', horizon)
+      .order('next_step_at', { ascending: true }),
+    db.from('leads').select('id,company,stage,next_step,next_step_at,owner,fee_proposed,updated_at'),
+    db
+      .from('pendencias')
+      .select('id,client_id,title,due_date,assignee')
+      .eq('status', 'open')
+      .not('due_date', 'is', null)
+      .lte('due_date', horizon)
+      .order('due_date', { ascending: true }),
+    clientNames(db),
+  ]).then(([a, b, c, d]) => [unwrap(a), unwrap(b), unwrap(c), d])
+
+  const leadNames = new Map(leads.map((l) => [l.id, l.company]))
+  res.json({
+    today,
+    followups: followups.map((f) => ({
+      ...f,
+      target_name: f.client_id ? names.get(f.client_id) || '—' : leadNames.get(f.lead_id) || '—',
+    })),
+    leads: leads.filter((l) => OPEN_STAGES.includes(l.stage)),
+    pendencias: pendencias.map((p) => ({ ...p, client_name: names.get(p.client_id) || '—' })),
+  })
 })
 
 // ----- Alertas -----
