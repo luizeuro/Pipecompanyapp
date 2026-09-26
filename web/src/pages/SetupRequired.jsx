@@ -8,7 +8,7 @@ const STEPS = {
     title: 'Falta conectar o banco de dados',
     steps: [
       'No Supabase, abra Project Settings → API e copie a Project URL e a service_role key.',
-      'Na Vercel, abra o projeto → Settings → Environment Variables e crie SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY com esses valores.',
+      'Na Vercel, abra o projeto → Settings → Environment Variables e crie SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY com esses valores (ou SUPABASE_PUBLISHABLE_KEY + SUPABASE_BACKEND_SECRET, ver README).',
       'Crie também JWT_SECRET, ENCRYPTION_KEY e CRON_SECRET (textos aleatórios; ENCRYPTION_KEY com 64 caracteres hexadecimais).',
       'Em Deployments, clique nos três pontinhos do último deploy → Redeploy. Depois recarregue esta página.',
     ],
@@ -17,8 +17,16 @@ const STEPS = {
     title: 'Falta criar as tabelas no Supabase',
     steps: [
       'No Supabase, abra SQL Editor → New query.',
-      'Cole todo o conteúdo do arquivo supabase/migrations/001_init.sql do repositório e clique em Run.',
+      'Cole o conteúdo de cada arquivo de supabase/migrations (001, depois 002), clicando em Run a cada um.',
       'Recarregue esta página.',
+    ],
+  },
+  DB_SECRET_MISMATCH: {
+    title: 'O banco recusou o acesso',
+    steps: [
+      'O valor de SUPABASE_BACKEND_SECRET na Vercel precisa ser igual ao gravado em private.backend_secret no Supabase.',
+      "No Supabase, SQL Editor: insert into private.backend_secret (secret) values ('<valor da Vercel>') on conflict (id) do update set secret = excluded.secret;",
+      'Depois recarregue esta página.',
     ],
   },
 }

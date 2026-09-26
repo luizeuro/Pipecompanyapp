@@ -12,11 +12,11 @@ import { useToast } from '../components/Toast.jsx'
 import { cx, Field, PageHeader, Spinner } from '../components/ui.jsx'
 
 const INTEGRATIONS = [
-  { key: 'db', label: 'Banco de dados (Supabase)', vars: 'SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY' },
+  { key: 'db', label: 'Banco de dados (Supabase)', vars: 'SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_PUBLISHABLE_KEY + SUPABASE_BACKEND_SECRET)' },
   { key: 'meta', label: 'Meta Ads', vars: 'META_SYSTEM_USER_TOKEN (e META_APP_SECRET, se o app exigir)' },
   { key: 'google', label: 'Google Ads', vars: 'GOOGLE_ADS_DEVELOPER_TOKEN, _CLIENT_ID, _CLIENT_SECRET, _REFRESH_TOKEN, _LOGIN_CUSTOMER_ID' },
   { key: 'email', label: 'E-mail de alertas (Resend)', vars: 'RESEND_API_KEY, ALERT_EMAIL_FROM, ALERT_EMAIL_TO' },
-  { key: 'cron', label: 'Verificação automática', vars: 'CRON_SECRET (na Vercel e nos Secrets do GitHub)' },
+  { key: 'cron', label: 'Verificação automática', vars: 'CRON_SECRET (o Cron da Vercel usa sozinho)' },
   { key: 'encryption', label: 'Criptografia de tokens', vars: 'ENCRYPTION_KEY (64 caracteres hexadecimais)' },
   { key: 'turnstile', label: 'CAPTCHA no login (opcional)', vars: 'TURNSTILE_SECRET_KEY, VITE_TURNSTILE_SITE_KEY' },
 ]
@@ -135,7 +135,7 @@ export default function Settings({ user }) {
 
         <Section
           title="Verificações automáticas"
-          description="O GitHub Actions chama a verificação 3x por dia (9h, 14h e 19h de Brasília)."
+          description="O Cron da Vercel chama a verificação 3x por dia (por volta de 9h, 14h e 19h de Brasília)."
           actions={<CheckNowButton onDone={loadStatus} />}
         >
           {status ? (
