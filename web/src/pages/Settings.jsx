@@ -8,6 +8,7 @@ import { useData } from '../lib/data.jsx'
 import { dateTimeBR, timeAgo } from '../lib/format.js'
 import CheckNowButton from '../components/CheckNowButton.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import AgentKeysSection from '../components/AgentKeysSection.jsx'
 import { useToast } from '../components/Toast.jsx'
 import { cx, Field, PageHeader, Spinner } from '../components/ui.jsx'
 
@@ -100,6 +101,7 @@ export default function Settings({ user }) {
       <PageHeader title="Configurações" subtitle="Integrações, verificações automáticas e equipe." />
 
       <div className="grid gap-6 xl:grid-cols-2">
+        {isAdmin && <AgentKeysSection />}
         <Section
           title="Integrações"
           description="Configuradas nas variáveis de ambiente da Vercel. Depois de mudar uma, faça Redeploy."

@@ -1,9 +1,9 @@
 // Hoje: a tela de abertura do CRM. Junta numa agenda só os follow-ups dos
 // clientes, os próximos passos do funil e as pendências com prazo, e ao lado
 // mostra quem precisa de atenção (risco, sem contato, renovação, cobrança).
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertOctagon, CalendarClock, CalendarDays, Check, ListTodo, MessageSquarePlus, PhoneOff, Plus, Receipt, RefreshCcw, Target, Wallet } from 'lucide-react'
+import { AlertOctagon, Bot, CalendarClock, CalendarDays, Check, ListTodo, MessageSquarePlus, PhoneOff, Plus, Receipt, RefreshCcw, Target, Wallet } from 'lucide-react'
 import { api } from '../lib/api.js'
 import { useData } from '../lib/data.jsx'
 import { isNoContact, isLowBalance } from '../lib/clientFilters.js'
@@ -11,6 +11,7 @@ import { dateShort, daysUntil, money, relativeDay } from '../lib/format.js'
 import { kindLabel } from '../lib/constants.js'
 import { daysSince } from '../lib/urgency.js'
 import InteractionForm from '../components/InteractionForm.jsx'
+import Markdown from '../components/Markdown.jsx'
 import LeadDetail from '../components/LeadDetail.jsx'
 import LeadForm from '../components/LeadForm.jsx'
 import { useToast } from '../components/Toast.jsx'
@@ -53,6 +54,17 @@ export default function Today() {
   const [openLead, setOpenLead] = useState(null)
   const [newLead, setNewLead] = useState(false)
   const [busyId, setBusyId] = useState(null)
+  const [dailyReport, setDailyReport] = useState(null)
+
+  // Resumo do dia que o Hermes publica de manhã (se já saiu hoje).
+  useEffect(() => {
+    api('/reports?kind=daily&limit=1')
+      .then(({ reports }) => {
+        const r = reports[0]
+        if (r && new Date(r.created_at).toDateString() === new Date().toDateString()) setDailyReport(r)
+      })
+      .catch(() => {})
+  }, [])
 
   // Agenda única: follow-up de cliente/lead + próximo passo do funil + pendência.
   const agenda = useMemo(() => {
@@ -227,6 +239,18 @@ export default function Today() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <section className="min-w-0 space-y-4">
+          {dailyReport && (
+            <details className="card group overflow-hidden" open>
+              <summary className="flex cursor-pointer list-none items-center gap-2 border-b border-slate-100 px-4 py-2.5 text-sm font-semibold dark:border-slate-800">
+                <Bot className="h-4 w-4 text-violet-500" aria-hidden="true" />
+                {dailyReport.title}
+                <span className="muted ml-auto text-xs font-normal">por {dailyReport.created_by}</span>
+              </summary>
+              <div className="px-4 py-3">
+                <Markdown text={dailyReport.content} />
+              </div>
+            </details>
+          )}
           {loading || !today ? (
             <div className="flex justify-center py-16">
               <Spinner className="h-6 w-6 text-brand-400" />

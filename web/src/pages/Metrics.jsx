@@ -1,34 +1,15 @@
 // Números da agência: receita recorrente (soma dos honorários), ticket médio,
 // verba sob gestão, funil dos últimos 90 dias, saúde da carteira, receita por
-// responsável e cancelamentos. Tudo calculado a partir da ficha dos clientes e
-// do funil — não há lançamento financeiro separado (só valores, por decisão).
-import { useEffect, useMemo, useState } from 'react'
+// responsável e cancelamentos. O cálculo é do backend (lib/metrics.js, rota
+// /api/metrics) — o mesmo que o Hermes lê pela ferramenta numeros_agencia.
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Banknote, Briefcase, Clock, Megaphone, Target, TrendingDown, Trophy, Users } from 'lucide-react'
 import { api } from '../lib/api.js'
-import { useData } from '../lib/data.jsx'
-import { OPEN_STAGES } from '../lib/constants.js'
 import { money, moneyCompact } from '../lib/format.js'
 import { LEVEL_STYLES } from '../lib/urgency.js'
 import { useToast } from '../components/Toast.jsx'
 import { cx, EmptyState, PageHeader, Spinner, StatTile } from '../components/ui.jsx'
-
-const DAY = 86400000
-const fee = (c) => Number(c.fee_monthly) || 0
-
-// Receita recorrente num fim de mês: clientes que já tinham começado e ainda
-// não tinham cancelado. Pausado conta nos meses passados (estava pagando) mas
-// não no mês atual. Sem data de início, vale a data de cadastro.
-function mrrAt(clients, monthEnd, isCurrent) {
-  return clients.reduce((sum, c) => {
-    if (!fee(c)) return sum
-    if (isCurrent && c.status !== 'active') return sum
-    const start = c.contract_start ? new Date(`${c.contract_start}T12:00:00`) : new Date(c.created_at)
-    if (start > monthEnd) return sum
-    if (c.status === 'churned' && (!c.churned_at || new Date(c.churned_at) <= monthEnd)) return sum
-    return sum + fee(c)
-  }, 0)
-}
 
 function Section({ title, subtitle, children }) {
   return (
@@ -67,87 +48,24 @@ function BarList({ rows, format = money, empty }) {
 }
 
 export default function Metrics() {
-  const { clients } = useData()
   const toast = useToast()
-  const [leads, setLeads] = useState(null)
+  const [m, setM] = useState(null)
 
   useEffect(() => {
-    api('/leads')
-      .then((d) => setLeads(d.leads))
-      .catch((err) => {
-        toast(err.message, 'error')
-        setLeads([])
-      })
+    api('/metrics')
+      .then(setM)
+      .catch((err) => toast(err.message, 'error'))
   }, [toast])
 
-  const m = useMemo(() => {
-    const active = clients.filter((c) => c.status === 'active')
-    const paying = active.filter((c) => fee(c) > 0)
-    const mrr = paying.reduce((s, c) => s + fee(c), 0)
+  if (!m) {
+    return (
+      <div className="flex justify-center py-20">
+        <Spinner className="h-6 w-6 text-brand-400" />
+      </div>
+    )
+  }
 
-    // Últimos 6 meses (o atual conta até hoje).
-    const now = new Date()
-    const history = Array.from({ length: 6 }, (_, i) => {
-      const monthsAgo = 5 - i
-      const first = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
-      const isCurrent = monthsAgo === 0
-      const end = isCurrent ? now : new Date(first.getFullYear(), first.getMonth() + 1, 0, 23, 59, 59)
-      return {
-        label: first.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '').replace(' de ', '/'),
-        value: mrrAt(clients, end, isCurrent),
-        isCurrent,
-      }
-    })
-
-    const byOwner = new Map()
-    for (const c of paying) {
-      const key = c.manager || 'Sem responsável'
-      const e = byOwner.get(key) || { value: 0, count: 0 }
-      e.value += fee(c)
-      e.count++
-      byOwner.set(key, e)
-    }
-
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const churned = clients.filter((c) => c.status === 'churned' && c.churned_at && new Date(c.churned_at) >= monthStart)
-
-    const health = { ok: 0, warn: 0, critical: 0 }
-    for (const c of active) if (c.health) health[c.health.level]++
-
-    const since = Date.now() - 90 * DAY
-    const all = leads || []
-    const won = all.filter((l) => l.stage === 'won' && l.won_at && new Date(l.won_at) >= since)
-    const lost = all.filter((l) => l.stage === 'lost' && l.lost_at && new Date(l.lost_at) >= since)
-    const lostReasons = new Map()
-    for (const l of lost) {
-      const reason = (l.lost_reason || 'Sem motivo').split(' — ')[0]
-      lostReasons.set(reason, (lostReasons.get(reason) || 0) + 1)
-    }
-    const daysToClose = won.map((l) => (new Date(l.won_at) - new Date(l.created_at)) / DAY).filter((d) => d >= 0)
-
-    return {
-      active,
-      paying,
-      mrr,
-      ticket: paying.length ? mrr / paying.length : 0,
-      media: active.reduce((s, c) => s + (Number(c.monthly_budget) || 0), 0),
-      history,
-      byOwner: [...byOwner.entries()].map(([label, e]) => ({ label, value: e.value, hint: `${e.count} cliente(s)` })).sort((a, b) => b.value - a.value),
-      churned,
-      churnedValue: churned.reduce((s, c) => s + fee(c), 0),
-      health,
-      open: all.filter((l) => OPEN_STAGES.includes(l.stage)),
-      newLeads: all.filter((l) => new Date(l.created_at) >= since).length,
-      won,
-      wonValue: won.reduce((s, l) => s + (Number(l.fee_proposed) || 0), 0),
-      lost,
-      rate: won.length + lost.length ? Math.round((won.length / (won.length + lost.length)) * 100) : null,
-      lostReasons: [...lostReasons.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value),
-      avgDaysToClose: daysToClose.length ? Math.round(daysToClose.reduce((a, b) => a + b, 0) / daysToClose.length) : null,
-      missingFee: active.filter((c) => !fee(c)),
-    }
-  }, [clients, leads])
-
+  const f = m.funnel
   const maxHistory = Math.max(...m.history.map((h) => h.value), 0)
   const healthTotal = m.health.ok + m.health.warn + m.health.critical
 
@@ -157,15 +75,21 @@ export default function Metrics() {
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Receita mensal recorrente" value={moneyCompact(m.mrr)} hint={money(m.mrr)} icon={Banknote} />
-        <StatTile label="Ticket médio" value={moneyCompact(m.ticket)} hint={`${m.paying.length} cliente(s) com honorário`} icon={Briefcase} />
-        <StatTile label="Clientes ativos" value={m.active.length} hint={m.missingFee.length ? `${m.missingFee.length} sem honorário na ficha` : 'todos com honorário'} level={m.missingFee.length ? 'warn' : undefined} icon={Users} />
-        <StatTile label="Verba de mídia sob gestão" value={moneyCompact(m.media)} hint="soma das verbas mensais" icon={Megaphone} />
+        <StatTile label="Ticket médio" value={moneyCompact(m.ticket)} hint={`${m.paying_count} cliente(s) com honorário`} icon={Briefcase} />
+        <StatTile
+          label="Clientes ativos"
+          value={m.active_count}
+          hint={m.missing_fee.length ? `${m.missing_fee.length} sem honorário na ficha` : 'todos com honorário'}
+          level={m.missing_fee.length ? 'warn' : undefined}
+          icon={Users}
+        />
+        <StatTile label="Verba de mídia sob gestão" value={moneyCompact(m.media_budget_total)} hint="soma das verbas mensais" icon={Megaphone} />
       </div>
 
-      {m.missingFee.length > 0 && (
+      {m.missing_fee.length > 0 && (
         <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
           Sem honorário na ficha (não entram na receita):{' '}
-          {m.missingFee.map((c, i) => (
+          {m.missing_fee.map((c, i) => (
             <span key={c.id}>
               {i > 0 && ', '}
               <Link to={`/clientes/${c.id}`} className="font-semibold underline">
@@ -185,14 +109,11 @@ export default function Metrics() {
             <div className="flex h-48 items-end gap-2" role="img" aria-label={`Receita recorrente: ${m.history.map((h) => `${h.label} ${money(h.value)}`).join(', ')}`}>
               {m.history.map((h) => (
                 <div key={h.label} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1" title={`${h.label}: ${money(h.value)}`}>
-                  <span className={cx('tabular text-[11px]', h.isCurrent ? 'font-bold text-brand-800 dark:text-white' : 'text-brand-600 dark:text-slate-300')}>
+                  <span className={cx('tabular text-[11px]', h.is_current ? 'font-bold text-brand-800 dark:text-white' : 'text-brand-600 dark:text-slate-300')}>
                     {moneyCompact(h.value)}
                   </span>
-                  <div
-                    className="w-full max-w-[56px] rounded-t-[4px] bg-brand-800 dark:bg-slate-300"
-                    style={{ height: `${Math.max(2, (h.value / maxHistory) * 100 - 18)}%` }}
-                  />
-                  <span className={cx('text-[11px]', h.isCurrent ? 'font-bold text-brand-800 dark:text-white' : 'muted')}>{h.label}</span>
+                  <div className="w-full max-w-[56px] rounded-t-[4px] bg-brand-800 dark:bg-slate-300" style={{ height: `${Math.max(2, (h.value / maxHistory) * 100 - 18)}%` }} />
+                  <span className={cx('text-[11px]', h.is_current ? 'font-bold text-brand-800 dark:text-white' : 'muted')}>{h.label}</span>
                 </div>
               ))}
             </div>
@@ -234,30 +155,24 @@ export default function Metrics() {
         </Section>
 
         <Section title="Funil comercial · últimos 90 dias">
-          {leads === null ? (
-            <Spinner className="h-5 w-5 text-brand-400" />
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
-                <StatTile label="Leads novos" value={m.newLeads} icon={Target} />
-                <StatTile label="Fechados" value={m.won.length} hint={m.wonValue ? `+ ${moneyCompact(m.wonValue)}/mês` : null} level={m.won.length ? 'ok' : undefined} icon={Trophy} />
-                <StatTile label="Taxa de fechamento" value={m.rate != null ? `${m.rate}%` : '—'} hint={`${m.lost.length} perdido(s)`} icon={Target} />
-                <StatTile label="Tempo até fechar" value={m.avgDaysToClose != null ? `${m.avgDaysToClose}d` : '—'} hint="média, do cadastro ao fechamento" icon={Clock} />
-              </div>
-              <h3 className="section-title mb-3 mt-5">Por que perdemos</h3>
-              <BarList rows={m.lostReasons} format={(v) => `${v} lead(s)`} empty="Nenhum lead perdido nos últimos 90 dias." />
-              <p className="muted mt-4 text-xs">
-                Em aberto agora: {m.open.length} lead(s), {money(m.open.reduce((s, l) => s + (Number(l.fee_proposed) || 0), 0))}/mês em propostas.{' '}
-                <Link to="/funil" className="font-semibold underline">
-                  Abrir funil
-                </Link>
-              </p>
-            </>
-          )}
+          <div className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
+            <StatTile label="Leads novos" value={f.new_leads_90d} icon={Target} />
+            <StatTile label="Fechados" value={f.won_90d} hint={f.won_value_90d ? `+ ${moneyCompact(f.won_value_90d)}/mês` : null} level={f.won_90d ? 'ok' : undefined} icon={Trophy} />
+            <StatTile label="Taxa de fechamento" value={f.close_rate != null ? `${f.close_rate}%` : '—'} hint={`${f.lost_90d} perdido(s)`} icon={Target} />
+            <StatTile label="Tempo até fechar" value={f.avg_days_to_close != null ? `${f.avg_days_to_close}d` : '—'} hint="média, do cadastro ao fechamento" icon={Clock} />
+          </div>
+          <h3 className="section-title mb-3 mt-5">Por que perdemos</h3>
+          <BarList rows={f.lost_reasons} format={(v) => `${v} lead(s)`} empty="Nenhum lead perdido nos últimos 90 dias." />
+          <p className="muted mt-4 text-xs">
+            Em aberto agora: {f.open_count} lead(s), {money(f.open_value)}/mês em propostas.{' '}
+            <Link to="/funil" className="font-semibold underline">
+              Abrir funil
+            </Link>
+          </p>
         </Section>
 
         <Section title="Receita por responsável" subtitle="Honorários dos clientes ativos, pelo responsável na ficha.">
-          <BarList rows={m.byOwner} empty="Nenhum cliente ativo com honorário." />
+          <BarList rows={m.by_owner.map((o) => ({ label: o.label, value: o.value, hint: `${o.clients} cliente(s)` }))} empty="Nenhum cliente ativo com honorário." />
           <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
             <h3 className="section-title mb-2 flex items-center gap-1.5">
               <TrendingDown className="h-3.5 w-3.5" aria-hidden="true" /> Cancelamentos neste mês
@@ -267,7 +182,7 @@ export default function Metrics() {
             ) : (
               <>
                 <p className="text-sm">
-                  <span className="font-bold">{m.churned.length}</span> cliente(s), <span className="font-bold">{money(m.churnedValue)}/mês</span> a menos na receita.
+                  <span className="font-bold">{m.churned.length}</span> cliente(s), <span className="font-bold">{money(m.churned_value)}/mês</span> a menos na receita.
                 </p>
                 <ul className="mt-2 space-y-1 text-sm">
                   {m.churned.map((c) => (
@@ -275,7 +190,7 @@ export default function Metrics() {
                       <Link to={`/clientes/${c.id}`} className="hover:underline">
                         {c.name}
                       </Link>
-                      <span className="muted"> · {money(fee(c))}/mês</span>
+                      <span className="muted"> · {money(c.fee)}/mês</span>
                     </li>
                   ))}
                 </ul>

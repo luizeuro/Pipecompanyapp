@@ -19,6 +19,8 @@ import ContactsCard from '../components/ContactsCard.jsx'
 import ContractCard from '../components/ContractCard.jsx'
 import InteractionForm from '../components/InteractionForm.jsx'
 import Timeline from '../components/Timeline.jsx'
+import ReportForm from '../components/ReportForm.jsx'
+import ReportsList from '../components/ReportsList.jsx'
 import { useToast } from '../components/Toast.jsx'
 import {
   cx,
@@ -80,7 +82,7 @@ export default function ClientDetail() {
     )
   }
 
-  const { client: c, snapshots, optimizations, pendencias, alerts, contacts, interactions } = data
+  const { client: c, snapshots, optimizations, pendencias, alerts, contacts, interactions, reports } = data
   const openPend = pendencias.filter((p) => p.status === 'open')
   const openAlerts = alerts.filter((a) => !a.resolved_at)
   const today = new Date().toISOString().slice(0, 10)
@@ -230,6 +232,7 @@ export default function ClientDetail() {
           onChange={(v) => setParams({ aba: v }, { replace: true })}
           tabs={[
             { id: 'linha', label: 'Linha do tempo', count: interactions.length },
+            { id: 'relatorios', label: 'Relatórios', count: reports.length },
             { id: 'otimizacoes', label: 'Otimizações', count: optimizations.length },
             { id: 'pendencias', label: 'Pendências', count: openPend.length },
             { id: 'alertas', label: 'Alertas', count: openAlerts.length },
@@ -239,6 +242,14 @@ export default function ClientDetail() {
           <button type="button" className="btn-primary" onClick={() => setModal({ type: 'contact' })}>
             <MessageSquarePlus className="h-4 w-4" /> Registrar contato
           </button>
+        )}
+        {tab === 'relatorios' && (
+          <button type="button" className="btn-primary" onClick={() => setModal({ type: 'report' })}>
+            <Plus className="h-4 w-4" /> Novo relatório
+          </button>
+        )}
+        {tab === 'relatorios' && (
+          <ReportsList reports={reports} onChanged={load} emptyText="Relatórios e análises deste cliente (da equipe ou do Hermes) aparecem aqui." />
         )}
         {tab === 'otimizacoes' && (
           <button type="button" className="btn-primary" onClick={() => setModal({ type: 'opt' })}>
@@ -374,6 +385,7 @@ export default function ClientDetail() {
 
       <ClientForm open={modal?.type === 'edit-client'} client={c} onClose={closeModal} onSaved={reloadAll} />
       <InteractionForm open={modal?.type === 'contact'} clientId={c.id} targetName={c.name} onClose={closeModal} onSaved={reloadAll} />
+      <ReportForm open={modal?.type === 'report'} clientId={c.id} onClose={closeModal} onSaved={load} />
       <OptimizationForm open={modal?.type === 'opt'} optimization={modal?.item} clientId={c.id} onClose={closeModal} onSaved={reloadAll} />
       <PendenciaForm open={modal?.type === 'pend'} pendencia={modal?.item} clientId={c.id} onClose={closeModal} onSaved={reloadAll} />
       <ConfirmDialog
