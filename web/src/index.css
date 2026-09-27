@@ -70,6 +70,55 @@
   }
 }
 
+/* Texto de relatório em Markdown (componente Markdown.jsx). */
+@layer components {
+  .md {
+    @apply text-sm leading-relaxed text-brand-700 dark:text-slate-200;
+  }
+  .md > * + * {
+    @apply mt-2;
+  }
+  .md h1,
+  .md h2 {
+    @apply mt-4 text-base font-bold text-brand-800 dark:text-white;
+  }
+  .md h3,
+  .md h4 {
+    @apply mt-3 text-sm font-bold text-brand-800 dark:text-white;
+  }
+  .md ul {
+    @apply list-disc space-y-1 pl-5;
+  }
+  .md ol {
+    @apply list-decimal space-y-1 pl-5;
+  }
+  .md strong {
+    @apply font-semibold text-brand-800 dark:text-white;
+  }
+  .md a {
+    @apply font-semibold underline;
+  }
+  .md code {
+    @apply rounded bg-slate-100 px-1 py-0.5 text-xs dark:bg-slate-800;
+  }
+  .md blockquote {
+    @apply border-l-2 border-slate-300 pl-3 italic dark:border-slate-600;
+  }
+  .md table {
+    @apply w-full border-collapse text-xs;
+  }
+  .md th,
+  .md td {
+    @apply border border-slate-200 px-2 py-1 text-left dark:border-slate-700;
+  }
+  .md th {
+    @apply bg-slate-50 font-semibold dark:bg-slate-800;
+  }
+  .md > :first-child {
+    @apply mt-0;
+  }
+}
+
 /* Logo da Pipe é branco sobre preto: "screen" some com o preto e deixa só o
    traço branco, então ele funciona sobre a sidebar escura e sobre o marinho. */
 .logo-screen {

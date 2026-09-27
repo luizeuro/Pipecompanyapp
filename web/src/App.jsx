@@ -12,6 +12,7 @@ import SetupRequired from './pages/SetupRequired.jsx'
 import Today from './pages/Today.jsx'
 import Funnel from './pages/Funnel.jsx'
 import Metrics from './pages/Metrics.jsx'
+import Reports from './pages/Reports.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Clients from './pages/Clients.jsx'
 import ClientDetail from './pages/ClientDetail.jsx'
@@ -83,6 +84,7 @@ export default function App() {
                 <Route path="/" element={<Today />} />
                 <Route path="/funil" element={<Funnel />} />
                 <Route path="/numeros" element={<Metrics />} />
+                <Route path="/relatorios" element={<Reports />} />
                 <Route path="/contas" element={<Dashboard />} />
                 <Route path="/clientes" element={<Clients />} />
                 <Route path="/clientes/:id" element={<ClientDetail />} />
