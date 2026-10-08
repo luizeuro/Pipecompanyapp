@@ -3,7 +3,7 @@
 // otimizações), campanhas do Meta, otimizações, pendências e alertas só dele.
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Check, MessageSquarePlus, Pencil, Plus, Trash2, UserRound } from 'lucide-react'
+import { ArrowLeft, Check, MessageCircle, MessageSquarePlus, Pencil, Plus, Trash2, UserRound } from 'lucide-react'
 import { api } from '../lib/api.js'
 import { useData } from '../lib/data.jsx'
 import { CLIENT_STATUS, categoryLabel, ALERT_TYPES } from '../lib/constants.js'
@@ -22,6 +22,9 @@ import Timeline from '../components/Timeline.jsx'
 import ReportForm from '../components/ReportForm.jsx'
 import ReportsList from '../components/ReportsList.jsx'
 import CampaignsPanel from '../components/CampaignsPanel.jsx'
+import BriefingCard, { ServiceChips } from '../components/BriefingCard.jsx'
+import OnboardingCard from '../components/OnboardingCard.jsx'
+import MessageModal from '../components/MessageModal.jsx'
 import { useToast } from '../components/Toast.jsx'
 import {
   cx,
@@ -83,7 +86,8 @@ export default function ClientDetail() {
     )
   }
 
-  const { client: c, snapshots, optimizations, pendencias, alerts, contacts, interactions, reports } = data
+  const { client: c, snapshots, optimizations, pendencias, alerts, contacts, interactions, reports, checklist = [] } = data
+  const onboardingOpen = checklist.length > 0 && checklist.some((i) => !i.done_at)
   const openPend = pendencias.filter((p) => p.status === 'open')
   const openAlerts = alerts.filter((a) => !a.resolved_at)
   const today = new Date().toISOString().slice(0, 10)
@@ -135,19 +139,20 @@ export default function ClientDetail() {
 
   return (
     <>
-      <Link to="/clientes" className="muted mb-3 inline-flex items-center gap-1 text-sm hover:text-brand-800 dark:hover:text-white">
-        <ArrowLeft className="h-4 w-4" /> Clientes
+      <Link to="/clientes" className="eyebrow mb-3 inline-flex items-center gap-1 hover:text-brand-800 dark:hover:text-white">
+        <ArrowLeft className="h-3.5 w-3.5" /> Operação / Clientes
       </Link>
 
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-brand-800 dark:text-white">{c.name}</h1>
+          <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-brand-900 dark:text-white">{c.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <LevelBadge level={c.status === 'active' ? 'ok' : 'never'}>{CLIENT_STATUS[c.status]?.label}</LevelBadge>
             <HealthBadge health={c.health} showScore />
             {(c.tags || []).map((t) => (
               <TagChip key={t} id={t} />
             ))}
+            <ServiceChips services={c.services} />
             {c.manager && (
               <span className="muted ml-1 inline-flex items-center gap-1 text-xs">
                 <UserRound className="h-3.5 w-3.5" /> {c.manager}
@@ -165,6 +170,9 @@ export default function ClientDetail() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-secondary" onClick={() => setModal({ type: 'message' })}>
+            <MessageCircle className="h-4 w-4" /> Mensagem
+          </button>
           <button type="button" className="btn-primary" onClick={() => setModal({ type: 'contact' })}>
             <MessageSquarePlus className="h-4 w-4" /> Registrar contato
           </button>
@@ -178,9 +186,17 @@ export default function ClientDetail() {
         </div>
       </div>
 
+      {onboardingOpen && (
+        <div className="mb-4">
+          <OnboardingCard clientId={c.id} items={checklist} onChanged={reloadAll} />
+        </div>
+      )}
+
       <div className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-4">
+          <BriefingCard client={c} onChanged={reloadAll} />
           <ContractCard client={c} onEdit={() => setModal({ type: 'edit-client' })} />
+          {!onboardingOpen && <OnboardingCard clientId={c.id} items={checklist} onChanged={reloadAll} />}
         </div>
         <div className="space-y-4">
           {c.health && (
@@ -388,6 +404,7 @@ export default function ClientDetail() {
 
       <ClientForm open={modal?.type === 'edit-client'} client={c} onClose={closeModal} onSaved={reloadAll} />
       <InteractionForm open={modal?.type === 'contact'} clientId={c.id} targetName={c.name} onClose={closeModal} onSaved={reloadAll} />
+      {modal?.type === 'message' && <MessageModal client={c} contacts={contacts} onClose={closeModal} onSent={reloadAll} />}
       <ReportForm open={modal?.type === 'report'} clientId={c.id} onClose={closeModal} onSaved={load} />
       <OptimizationForm open={modal?.type === 'opt'} optimization={modal?.item} clientId={c.id} onClose={closeModal} onSaved={reloadAll} />
       <PendenciaForm open={modal?.type === 'pend'} pendencia={modal?.item} clientId={c.id} onClose={closeModal} onSaved={reloadAll} />

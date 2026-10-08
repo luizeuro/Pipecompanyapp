@@ -3,7 +3,7 @@
 // mostra quem precisa de atenção (risco, sem contato, renovação, cobrança).
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertOctagon, Bot, CalendarClock, CalendarDays, Check, ListTodo, MessageSquarePlus, PhoneOff, Plus, Receipt, RefreshCcw, Target, Wallet } from 'lucide-react'
+import { AlertOctagon, ArrowRight, Bot, CalendarClock, CalendarDays, Check, FileText, ListTodo, MessageSquarePlus, PhoneOff, Plus, Receipt, RefreshCcw, Sparkles, Target, Wallet } from 'lucide-react'
 import { api } from '../lib/api.js'
 import { useData } from '../lib/data.jsx'
 import { isNoContact, isLowBalance } from '../lib/clientFilters.js'
@@ -20,7 +20,9 @@ import { cx, EmptyState, HealthBadge, LastContactBadge, PageHeader, Spinner, Sta
 const TYPE_META = {
   followup: { label: 'Follow-up', icon: MessageSquarePlus },
   lead: { label: 'Funil', icon: Target },
-  pendencia: { label: 'Pendência', icon: ListTodo },
+  pendencia: { label: 'Tarefa', icon: ListTodo },
+  optimization: { label: 'Rotina', icon: Sparkles },
+  report: { label: 'Rotina', icon: FileText },
 }
 
 // Próxima data de cobrança a partir do dia do mês (dia 31 vira o último dia em meses curtos).
@@ -37,10 +39,10 @@ function nextBillingDate(day) {
 function SideCard({ title, icon: Icon, count, children, tone }) {
   return (
     <section className="card">
-      <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+      <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-white/[0.06]">
         <Icon className={cx('h-4 w-4', tone || 'text-brand-400')} aria-hidden="true" />
         <h2 className="flex-1 text-sm font-semibold">{title}</h2>
-        <span className="tabular rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">{count}</span>
+        <span className="tabular rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-500 dark:bg-white/[0.07] dark:text-slate-300">{count}</span>
       </div>
       {children}
     </section>
@@ -102,6 +104,23 @@ export default function Today() {
         target: p.client_name,
         href: `/clientes/${p.client_id}?aba=pendencias`,
         raw: p,
+      })),
+      // Cadência do cliente (dia da otimização e do relatório, definidos no briefing).
+      // Sai da agenda sozinha quando a otimização ou o relatório é registrado.
+      ...(today.rotinas || []).map((r) => ({
+        key: `r-${r.type}-${r.client_id}`,
+        type: r.type,
+        date: r.date,
+        title: r.title,
+        detail:
+          r.type === 'optimization'
+            ? r.last_done
+              ? `Última otimização registrada em ${dateShort(r.last_done)}. Abra Campanhas, otimize e registre.`
+              : 'Nenhuma otimização registrada ainda. Abra Campanhas, otimize e registre.'
+            : 'Publicar o relatório do mês e enviar ao cliente.',
+        target: r.client_name,
+        href: `/clientes/${r.client_id}?aba=${r.type === 'optimization' ? 'campanhas' : 'relatorios'}`,
+        raw: r,
       })),
     ].sort((a, b) => a.date.localeCompare(b.date))
     const t = today.today
@@ -184,7 +203,7 @@ export default function Today() {
           {item.detail && <p className="muted mt-0.5 line-clamp-2 text-xs">{item.detail}</p>}
         </div>
         <div className="flex shrink-0 gap-1">
-          {item.type !== 'pendencia' && (
+          {(item.type === 'followup' || item.type === 'lead') && (
             <button
               type="button"
               className="icon-btn"
@@ -201,6 +220,10 @@ export default function Today() {
             <button type="button" className="btn-secondary px-2.5 py-1 text-xs" onClick={() => setOpenLead(item.leadId)}>
               Abrir
             </button>
+          ) : item.type === 'optimization' || item.type === 'report' ? (
+            <Link to={item.href} className="btn-secondary px-2.5 py-1 text-xs">
+              Abrir <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           ) : (
             <button type="button" className="btn-secondary px-2.5 py-1 text-xs" onClick={() => complete(item)} disabled={busyId === item.key}>
               {busyId === item.key ? <Spinner className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />} Feito
@@ -231,7 +254,7 @@ export default function Today() {
       />
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Atrasados" value={agenda.overdue.length} hint="follow-ups, funil e pendências" level={agenda.overdue.length ? 'critical' : 'ok'} icon={AlertOctagon} />
+        <StatTile label="Atrasados" value={agenda.overdue.length} hint="follow-ups, funil, tarefas e rotinas" level={agenda.overdue.length ? 'critical' : 'ok'} icon={AlertOctagon} />
         <StatTile label="Para hoje" value={agenda.today.length} hint={`${agenda.week.length} nos próximos 7 dias`} level={agenda.today.length ? 'warn' : undefined} icon={CalendarDays} />
         <StatTile label="Clientes em risco" value={atRisk.filter((c) => c.health.level === 'critical').length} hint={`${atRisk.filter((c) => c.health.level === 'warn').length} em atenção`} level={atRisk.some((c) => c.health.level === 'critical') ? 'critical' : atRisk.length ? 'warn' : 'ok'} icon={Target} />
         <StatTile label="Sem contato 15+ dias" value={noContact.length} hint="mesma régua das otimizações" level={noContact.length ? 'warn' : 'ok'} icon={PhoneOff} />

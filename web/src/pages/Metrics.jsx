@@ -10,12 +10,13 @@ import { money, moneyCompact } from '../lib/format.js'
 import { LEVEL_STYLES } from '../lib/urgency.js'
 import { useToast } from '../components/Toast.jsx'
 import { cx, EmptyState, PageHeader, Spinner, StatTile } from '../components/ui.jsx'
+import { serviceLabel } from '../lib/constants.js'
 
 function Section({ title, subtitle, children }) {
   return (
     <section className="card">
-      <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-        <h2 className="text-sm font-bold">{title}</h2>
+      <div className="border-b border-slate-100 px-4 py-3 dark:border-white/[0.06]">
+        <h2 className="text-sm font-semibold text-brand-900 dark:text-white">{title}</h2>
         {subtitle && <p className="muted text-xs">{subtitle}</p>}
       </div>
       <div className="p-4">{children}</div>
@@ -38,8 +39,8 @@ function BarList({ rows, format = money, empty }) {
               {r.hint && <span className="muted"> · {r.hint}</span>}
             </span>
           </div>
-          <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800">
-            <div className="h-2 rounded-full bg-brand-800 dark:bg-slate-300" style={{ width: `${Math.max(2, (r.value / max) * 100)}%` }} />
+          <div className="h-2 rounded-full bg-slate-100 dark:bg-white/[0.06]">
+            <div className="h-2 rounded-full bg-brand-800 dark:bg-accent-400" style={{ width: `${Math.max(2, (r.value / max) * 100)}%` }} />
           </div>
         </li>
       ))}
@@ -199,6 +200,51 @@ export default function Metrics() {
           </div>
         </Section>
       </div>
+
+      {m.expansion && (
+        <section className="card-glow mt-6">
+          <div className="flex flex-wrap items-end justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-white/[0.06]">
+            <div>
+              <div className="eyebrow">Crescer dentro da carteira</div>
+              <h2 className="text-sm font-semibold text-brand-900 dark:text-white">Oportunidades de expansão</h2>
+              <p className="muted text-xs">A próxima solução da Pipe para cada cliente ativo, pelos serviços marcados no briefing.</p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {m.expansion.by_service.map((s) => (
+                <span key={s.key} className="chip" title={serviceLabel(s.key)}>
+                  {serviceLabel(s.key, true)} <span className="font-mono text-slate-400">{s.count}/{m.expansion.active}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+          {m.expansion.without_services.length > 0 && (
+            <p className="border-b border-slate-100 px-4 py-2.5 text-xs text-amber-700 dark:border-white/[0.06] dark:text-amber-300">
+              {m.expansion.without_services.length} cliente(s) ativo(s) sem serviço marcado: preencha no briefing para as oportunidades ficarem certas.
+            </p>
+          )}
+          <div className="grid gap-px bg-slate-100 dark:bg-white/[0.05] sm:grid-cols-2 xl:grid-cols-4">
+            {m.expansion.opportunities.map((o) => (
+              <div key={o.key} className="bg-white p-4 dark:bg-slate-950/60">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-brand-800 dark:text-slate-100">{o.label}</h3>
+                  <span className="kpi !text-lg">{o.clients.length}</span>
+                </div>
+                <p className="muted mt-0.5 text-xs">{o.hint}</p>
+                <ul className="mt-2 flex flex-wrap gap-1">
+                  {o.clients.slice(0, 12).map((c) => (
+                    <li key={c.id}>
+                      <Link to={`/clientes/${c.id}`} className="chip hover:border-accent-400 hover:text-accent-600 dark:hover:text-accent-200">
+                        {c.name}
+                      </Link>
+                    </li>
+                  ))}
+                  {o.clients.length > 12 && <li className="muted text-xs">+{o.clients.length - 12}</li>}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </>
   )
 }

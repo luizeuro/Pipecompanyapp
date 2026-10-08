@@ -65,19 +65,28 @@ export default function Login({ needsSetup, onLoggedIn }) {
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
-      <div className="flex items-center justify-center bg-ink px-6 py-10 dark:bg-brand-800 lg:w-[44%] lg:py-0">
-        <div className="max-w-sm text-center lg:text-left">
-          <img src="/pipe-logo.png" alt="Pipe Company" className="logo-screen mx-auto h-28 w-28 lg:mx-0 lg:h-40 lg:w-40" />
-          <h1 className="mt-6 text-2xl font-bold text-white lg:text-3xl">CRM e monitor de contas</h1>
-          <p className="mt-2 text-sm leading-relaxed text-brand-200">
-            Funil comercial, relacionamento com os clientes e as contas de anúncio da Pipe num lugar só.
+      <div className="relative flex items-center justify-center overflow-hidden border-white/[0.06] bg-ink px-6 py-10 lg:w-[46%] lg:border-r lg:py-0">
+        <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-accent-500/25 blur-[120px]" aria-hidden="true" />
+        <div className="pointer-events-none absolute -bottom-40 right-0 h-80 w-80 rounded-full bg-glow/15 blur-[120px]" aria-hidden="true" />
+        <div className="relative max-w-sm text-center lg:text-left">
+          <img src="/pipe-logo.png" alt="Pipe Company" className="logo-screen mx-auto h-24 w-24 lg:mx-0 lg:h-32 lg:w-32" />
+          <div className="mt-6 flex items-center justify-center gap-2 lg:justify-start">
+            <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-emerald-400" aria-hidden="true" />
+            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-slate-400">Sistema Pipe · OS</span>
+          </div>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white lg:text-4xl">
+            O pipeline da agência, <span className="bg-gradient-to-r from-accent-300 to-glow bg-clip-text text-transparent">numa tela só.</span>
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-slate-400">
+            Clientes, contas de anúncio, campanhas, funil, rotinas e o manual da Pipe — pra equipe operar com o mesmo padrão desde o primeiro dia.
           </p>
         </div>
       </div>
       <div className="flex flex-1 items-center justify-center px-6 py-10">
         <form onSubmit={submit} className="w-full max-w-sm space-y-4">
           <div>
-            <h2 className="text-xl font-bold text-brand-800 dark:text-white">{needsSetup ? 'Primeiro acesso' : 'Entrar'}</h2>
+            <div className="eyebrow">{needsSetup ? 'Configuração inicial' : 'Acesso da equipe'}</div>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-brand-900 dark:text-white">{needsSetup ? 'Primeiro acesso' : 'Entrar'}</h2>
             <p className="muted mt-1 text-sm">
               {needsSetup
                 ? 'Crie o acesso de administrador. Depois você cadastra o resto da equipe em Configurações.'

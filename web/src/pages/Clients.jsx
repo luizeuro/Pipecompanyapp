@@ -14,12 +14,14 @@ import ClientForm from '../components/ClientForm.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import { useToast } from '../components/Toast.jsx'
 import { cx, EmptyState, HealthBadge, LastContactBadge, LevelBadge, OptimizationBadge, PageHeader, TagChip } from '../components/ui.jsx'
+import { ServiceChips } from '../components/BriefingCard.jsx'
+import { ProgressBar } from '../components/OnboardingCard.jsx'
 
 function AccountCell({ id, level, format = (v) => v }) {
   if (!id) return <span className="text-slate-300 dark:text-slate-600">—</span>
   const style = LEVEL_STYLES[level] || LEVEL_STYLES.never
   return (
-    <span className="inline-flex items-center gap-1.5 font-mono text-xs">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-xs">
       <span className={cx('h-2 w-2 shrink-0 rounded-full', style.dot)} title="Nível do saldo" />
       {format(id)}
     </span>
@@ -80,34 +82,35 @@ export default function Clients() {
         ) : (
           <div className="scroll-thin overflow-x-auto">
             <table className="w-full min-w-[1180px] text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-brand-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+              <thead className="border-b border-slate-200 bg-slate-50 font-mono text-[10.5px] uppercase tracking-[0.12em] text-brand-500 dark:border-white/[0.06] dark:bg-white/[0.02] dark:text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Cliente</th>
-                  <th className="px-4 py-3 font-semibold">Situação</th>
-                  <th className="px-4 py-3 font-semibold">Saúde</th>
-                  <th className="px-4 py-3 text-right font-semibold">Honorário</th>
-                  <th className="px-4 py-3 font-semibold">Meta Ads</th>
-                  <th className="px-4 py-3 font-semibold">Google Ads</th>
-                  <th className="px-4 py-3 font-semibold">Responsável</th>
-                  <th className="px-4 py-3 font-semibold">Último contato</th>
-                  <th className="px-4 py-3 font-semibold">Última otimização</th>
-                  <th className="px-4 py-3 text-center font-semibold">Pend.</th>
+                  <th className="min-w-[240px] px-4 py-3 font-medium">Cliente</th>
+                  <th className="px-4 py-3 font-medium">Situação</th>
+                  <th className="px-4 py-3 font-medium">Saúde</th>
+                  <th className="px-4 py-3 text-right font-medium">Honorário</th>
+                  <th className="px-4 py-3 font-medium">Meta Ads</th>
+                  <th className="px-4 py-3 font-medium">Google Ads</th>
+                  <th className="px-4 py-3 font-medium">Responsável</th>
+                  <th className="px-4 py-3 font-medium">Último contato</th>
+                  <th className="px-4 py-3 font-medium">Última otimização</th>
+                  <th className="px-4 py-3 text-center font-medium">Pend.</th>
                   <th className="px-4 py-3" aria-label="Ações" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05]">
                 {shown.map((c) => (
                   <tr
                     key={c.id}
-                    className="cursor-pointer transition hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                    className="cursor-pointer transition hover:bg-slate-50 dark:hover:bg-white/[0.03]"
                     onClick={() => navigate(`/clientes/${c.id}`)}
                   >
                     <td className="px-4 py-3">
                       <Link to={`/clientes/${c.id}`} className="font-semibold hover:underline" onClick={(e) => e.stopPropagation()}>
                         {c.name}
                       </Link>
-                      {c.tags?.length > 0 && (
+                      {(c.services?.length > 0 || c.tags?.length > 0) && (
                         <div className="mt-1 flex flex-wrap gap-1">
+                          <ServiceChips services={c.services} />
                           {c.tags.map((t) => (
                             <TagChip key={t} id={t} size="xs" />
                           ))}
@@ -116,6 +119,14 @@ export default function Clients() {
                     </td>
                     <td className="px-4 py-3">
                       <LevelBadge level={c.status === 'active' ? 'ok' : 'never'}>{CLIENT_STATUS[c.status]?.label}</LevelBadge>
+                      {c.onboarding && c.onboarding.done < c.onboarding.total && (
+                        <div className="mt-1.5 w-28" title="Onboarding">
+                          <div className="mb-0.5 font-mono text-[10px] text-slate-400">
+                            onboarding {c.onboarding.done}/{c.onboarding.total}
+                          </div>
+                          <ProgressBar done={c.onboarding.done} total={c.onboarding.total} />
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {c.health ? <HealthBadge health={c.health} showScore /> : <span className="text-slate-300 dark:text-slate-600">—</span>}
