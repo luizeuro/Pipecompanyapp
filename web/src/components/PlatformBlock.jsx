@@ -1,7 +1,7 @@
 // Resumo de UMA conta (Meta ou Google) de um cliente: saldo, dias restantes,
 // gasto e resultado. `detailed` mostra a versão grande (página do cliente).
 import { AlertCircle, CircleSlash, PlugZap } from 'lucide-react'
-import { daysLabel, money, number, timeAgo } from '../lib/format.js'
+import { daysLabel, money, number, runoutLabel, timeAgo } from '../lib/format.js'
 import { BALANCE_SOURCE_LABEL, PLATFORMS } from '../lib/constants.js'
 import { cx, LevelBadge } from './ui.jsx'
 
@@ -74,7 +74,13 @@ export default function PlatformBlock({ platform, snapshot, level, detailed = fa
         )}
         {hasBalance && (
           <LevelBadge level={level}>
-            {s.days_left != null ? `dura ${daysLabel(s.days_left)}` : level === 'critical' ? 'abaixo do mínimo' : 'sem gasto recente'}
+            {s.days_left != null
+              ? level === 'critical' || level === 'warn'
+                ? runoutLabel(s.days_left)
+                : `dura ${daysLabel(s.days_left)}`
+              : level === 'critical'
+                ? Number(s.balance) <= 0 ? 'esgotado' : 'abaixo do mínimo'
+                : 'sem gasto recente'}
           </LevelBadge>
         )}
       </div>

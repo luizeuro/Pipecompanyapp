@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import { BellRing, ChevronDown, Clock, ListTodo, Search, Wallet, Check } from 'lucide-react'
 import { useData } from '../lib/data.jsx'
 import { api } from '../lib/api.js'
-import { daysLabel, money, normalizeSearch, timeAgo } from '../lib/format.js'
+import { money, normalizeSearch, runoutLabel, timeAgo } from '../lib/format.js'
 import { daysSince, urgencyLevel, LEVEL_STYLES } from '../lib/urgency.js'
 import { isStale } from '../lib/clientFilters.js'
 import { cx, OptimizationBadge, PlatformBadge, SeverityIcon, LevelBadge, Spinner } from './ui.jsx'
@@ -197,7 +197,7 @@ export default function AlertsSidebar() {
                       <PlatformBadge platform={p} />
                       <span className="tabular font-semibold">{money(s.balance, s.currency)}</span>
                     </span>
-                    <LevelBadge level={level}>{daysLabel(s.days_left) || 'abaixo do mínimo'}</LevelBadge>
+                    <LevelBadge level={level}>{Number(s.balance) <= 0 ? 'esgotado' : runoutLabel(s.days_left) || 'abaixo do mínimo'}</LevelBadge>
                   </div>
                 ))}
               </li>
