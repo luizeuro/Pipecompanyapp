@@ -104,3 +104,31 @@ export const REPORT_KINDS = [
 ]
 const reportKindById = new Map(REPORT_KINDS.map((k) => [k.id, k]))
 export const reportKindLabel = (id) => reportKindById.get(id)?.label || id
+
+// O que a Pipe vende (mesma lista de lib/services.js no backend).
+export const SERVICES = [
+  { id: 'meta_ads', label: 'Meta Ads', short: 'Meta' },
+  { id: 'google_ads', label: 'Google Ads', short: 'Google' },
+  { id: 'paginas', label: 'Páginas e sites', short: 'Páginas' },
+  { id: 'automacao', label: 'IA e automação', short: 'IA' },
+  { id: 'dados', label: 'Rastreamento e dados', short: 'Dados' },
+  { id: 'criativos', label: 'Criativos', short: 'Criativos' },
+]
+export const serviceLabel = (id, short = false) => {
+  const s = SERVICES.find((x) => x.id === id)
+  return s ? (short ? s.short : s.label) : id
+}
+
+// Briefing do cliente: o que qualquer pessoa da equipe precisa saber antes de mexer.
+export const BRIEFING_FIELDS = [
+  { key: 'objetivo', label: 'Objetivo principal', placeholder: 'Ex.: conversas no WhatsApp para implantes', rows: 2 },
+  { key: 'oferta', label: 'Oferta / produtos', placeholder: 'O que vendemos nos anúncios', rows: 2 },
+  { key: 'publico', label: 'Público', placeholder: 'Quem compra: idade, região, perfil', rows: 2 },
+  { key: 'diferenciais', label: 'Diferenciais', placeholder: 'Por que escolher esse cliente', rows: 2 },
+  { key: 'tom', label: 'Tom de voz', placeholder: 'Ex.: acolhedor, direto, sem gírias', rows: 1 },
+  { key: 'regras', label: 'Regras obrigatórias', placeholder: 'O que NUNCA pode / SEMPRE deve aparecer (ex.: CRO, sem "avaliação gratuita")', rows: 3 },
+  { key: 'concorrentes', label: 'Concorrentes', placeholder: 'Nomes ou @ para olhar na Biblioteca de Anúncios', rows: 1 },
+  { key: 'observacoes', label: 'Observações', placeholder: 'Combinados, sazonalidade, histórico importante', rows: 2 },
+]
+
+export const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']

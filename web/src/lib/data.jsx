@@ -51,7 +51,8 @@ export function DataProvider({ children }) {
     return (
       today.followups.filter((f) => f.next_step_at <= t).length +
       today.leads.filter((l) => l.next_step_at && l.next_step_at <= t).length +
-      today.pendencias.filter((p) => p.due_date <= t).length
+      today.pendencias.filter((p) => p.due_date <= t).length +
+      (today.rotinas || []).filter((r) => r.date <= t).length
     )
   }, [today])
 

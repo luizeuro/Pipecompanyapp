@@ -1,4 +1,4 @@
-// Tema claro/escuro. A escolha fica no navegador; sem escolha, segue o sistema.
+// Tema claro/escuro. A escolha fica no navegador; sem escolha, escuro (padrão do Sistema Pipe).
 // O index.html aplica o tema antes do React carregar, pra não piscar.
 
 export function currentTheme() {
