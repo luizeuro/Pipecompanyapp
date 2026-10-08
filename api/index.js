@@ -26,7 +26,7 @@ import {
 import { safeEqual } from '../lib/crypto.js'
 import { metaConfigured } from '../lib/meta.js'
 import { googleConfigured } from '../lib/google.js'
-import { runChecks, pruneHistory } from '../lib/checks.js'
+import { runChecks, pruneHistory, balanceWarnings, getClientCampaigns } from '../lib/checks.js'
 import { notifyAfterCheck } from '../lib/notify.js'
 import { emailConfigured, sendEmail, renderAlertsEmail } from '../lib/email.js'
 import { createApiKey, listApiKeys, revokeApiKey } from '../lib/apiKeys.js'
@@ -131,7 +131,8 @@ async function cronCheck(req, res) {
   }
   await pruneHistory().catch(() => {})
   const { newAlerts, ...summary } = result
-  res.json({ ...summary, email })
+  // avisos/texto: o que o n8n manda no Telegram (vazio = nada a avisar).
+  res.json({ ...summary, email, ...balanceWarnings(newAlerts) })
 }
 app.get('/api/cron/check', cronCheck)
 app.post('/api/cron/check', cronCheck)
@@ -283,6 +284,11 @@ app.post('/api/clients/:id/check', async (req, res) => {
   await crm.getClientOr404(getDb(), req.params.id, 'id')
   const { newAlerts, ...summary } = await runChecks({ clientIds: [req.params.id], trigger: 'manual' })
   res.json({ ...summary, new_alerts: newAlerts.length })
+})
+
+// Campanhas da conta Meta do cliente, consultadas na hora (só leitura).
+app.get('/api/clients/:id/campaigns', async (req, res) => {
+  res.json(await getClientCampaigns(req.params.id))
 })
 
 // Verificação geral disparada por alguém da equipe (sem e-mail: quem clicou já está vendo a tela).
