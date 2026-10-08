@@ -1,6 +1,6 @@
 // Raiz do app: descobre se há sessão, se o banco está configurado e se é o
 // primeiro acesso; depois monta as rotas das telas logadas.
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { api, setUnauthorizedHandler } from './lib/api.js'
 import { DataProvider } from './lib/data.jsx'
@@ -10,16 +10,26 @@ import { Spinner } from './components/ui.jsx'
 import Login from './pages/Login.jsx'
 import SetupRequired from './pages/SetupRequired.jsx'
 import Today from './pages/Today.jsx'
-import Funnel from './pages/Funnel.jsx'
-import Metrics from './pages/Metrics.jsx'
-import Reports from './pages/Reports.jsx'
-import Dashboard from './pages/Dashboard.jsx'
-import Clients from './pages/Clients.jsx'
-import ClientDetail from './pages/ClientDetail.jsx'
-import Optimizations from './pages/Optimizations.jsx'
-import Pendencias from './pages/Pendencias.jsx'
-import Alerts from './pages/Alerts.jsx'
-import Settings from './pages/Settings.jsx'
+
+// Cada tela é carregada só quando é aberta (o app abre mais rápido; o Hoje,
+// que é a primeira tela, vai junto no pacote principal).
+const Funnel = lazy(() => import('./pages/Funnel.jsx'))
+const Metrics = lazy(() => import('./pages/Metrics.jsx'))
+const Reports = lazy(() => import('./pages/Reports.jsx'))
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'))
+const Clients = lazy(() => import('./pages/Clients.jsx'))
+const ClientDetail = lazy(() => import('./pages/ClientDetail.jsx'))
+const Optimizations = lazy(() => import('./pages/Optimizations.jsx'))
+const Pendencias = lazy(() => import('./pages/Pendencias.jsx'))
+const Alerts = lazy(() => import('./pages/Alerts.jsx'))
+const Settings = lazy(() => import('./pages/Settings.jsx'))
+const Manual = lazy(() => import('./pages/Manual.jsx'))
+
+const PageLoading = () => (
+  <div className="flex justify-center py-20">
+    <Spinner className="h-6 w-6 text-accent-400" />
+  </div>
+)
 
 const SETUP_CODES = ['DB_NOT_CONFIGURED', 'DB_NOT_MIGRATED', 'DB_ACCESS_DENIED']
 
@@ -55,7 +65,7 @@ export default function App() {
   if (state.loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Spinner className="h-7 w-7 text-brand-400" />
+        <Spinner className="h-7 w-7 text-accent-400" />
       </div>
     )
   }
@@ -80,6 +90,7 @@ export default function App() {
         <BrowserRouter>
           <DataProvider>
             <Layout user={state.user} onLogout={logout}>
+              <Suspense fallback={<PageLoading />}>
               <Routes>
                 <Route path="/" element={<Today />} />
                 <Route path="/funil" element={<Funnel />} />
@@ -92,8 +103,10 @@ export default function App() {
                 <Route path="/pendencias" element={<Pendencias />} />
                 <Route path="/alertas" element={<Alerts />} />
                 <Route path="/configuracoes" element={<Settings user={state.user} />} />
+                <Route path="/manual" element={<Manual user={state.user} />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              </Suspense>
             </Layout>
           </DataProvider>
         </BrowserRouter>

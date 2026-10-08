@@ -19,54 +19,124 @@
   }
   body {
     @apply bg-paper text-brand-800 antialiased dark:bg-ink dark:text-slate-100;
-    font-feature-settings: 'cv11', 'ss01';
+    font-feature-settings: 'ss01', 'cv11';
+    /* Brilho de fundo: violeta à esquerda e ciano à direita, bem sutis. */
+    background-image: radial-gradient(1100px 520px at 18% -12%, rgba(123, 102, 255, 0.07), transparent 62%),
+      radial-gradient(900px 480px at 92% -18%, rgba(34, 211, 238, 0.05), transparent 60%);
+    background-attachment: fixed;
+  }
+  .dark body {
+    background-image: radial-gradient(1100px 560px at 18% -12%, rgba(123, 102, 255, 0.14), transparent 62%),
+      radial-gradient(900px 500px at 92% -18%, rgba(34, 211, 238, 0.08), transparent 60%);
+  }
+  /* Grade fina que some pra baixo: a "mesa de trabalho" do Pipe OS. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image: linear-gradient(rgba(26, 35, 50, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(26, 35, 50, 0.045) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 25%, transparent 75%);
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 25%, transparent 75%);
+  }
+  .dark body::before {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  }
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+  ::selection {
+    background: rgba(123, 102, 255, 0.35);
   }
   /* Números alinhados em colunas (saldos, gastos) */
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+  /* Barra de rolagem discreta no app todo */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(120, 130, 150, 0.35) transparent;
   }
 }
 
 @layer components {
   /* Blocos reutilizados em todas as telas, pra manter o mesmo visual sem repetir classe. */
   .card {
-    @apply rounded-xl border border-slate-200 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900;
+    @apply rounded-2xl border border-slate-200/90 bg-white/90 shadow-card backdrop-blur-sm
+      dark:border-white/[0.07] dark:bg-slate-900/55 dark:shadow-inner-top dark:backdrop-blur-xl;
+  }
+  /* Cartão com o filete de brilho no topo (destaques: KPIs, cards principais). */
+  .card-glow {
+    @apply card relative overflow-hidden;
+  }
+  .card-glow::after {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(123, 102, 255, 0.7), rgba(34, 211, 238, 0.6), transparent);
+    opacity: 0.8;
   }
   .input {
     @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-brand-800 placeholder:text-slate-400
-      focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20
+      focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20
       disabled:cursor-not-allowed disabled:opacity-60
-      dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-300 dark:focus:ring-brand-300/20;
+      dark:border-white/10 dark:bg-slate-950/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-accent-400 dark:focus:ring-accent-400/25;
   }
   .label {
-    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-brand-500 dark:text-slate-400;
+    @apply mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-brand-500 dark:text-slate-400;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-semibold transition
-      focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white
-      disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900;
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white
+      disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-ink;
   }
   .btn-primary {
-    @apply btn bg-brand-800 text-white hover:bg-brand-700 dark:bg-white dark:text-brand-800 dark:hover:bg-brand-100;
+    @apply btn bg-accent-600 text-white shadow-sm hover:bg-accent-500 dark:bg-accent-500 dark:shadow-glow dark:hover:bg-accent-400;
   }
   .btn-secondary {
-    @apply btn border border-slate-300 bg-white text-brand-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800;
+    @apply btn border border-slate-300 bg-white text-brand-800 hover:bg-slate-50
+      dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-100 dark:hover:border-white/20 dark:hover:bg-white/[0.07];
   }
   .btn-ghost {
-    @apply btn text-brand-600 hover:bg-brand-50 dark:text-slate-300 dark:hover:bg-slate-800;
+    @apply btn text-brand-600 hover:bg-brand-50 dark:text-slate-300 dark:hover:bg-white/[0.06] dark:hover:text-white;
   }
   .btn-danger {
     @apply btn bg-rose-600 text-white hover:bg-rose-700;
   }
   .icon-btn {
     @apply inline-flex h-8 w-8 items-center justify-center rounded-lg text-brand-500 transition hover:bg-slate-100 hover:text-brand-800
-      focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100;
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 dark:text-slate-400 dark:hover:bg-white/[0.07] dark:hover:text-slate-100;
   }
   .muted {
     @apply text-brand-500 dark:text-slate-400;
   }
   .section-title {
-    @apply text-xs font-bold uppercase tracking-[0.14em] text-brand-500 dark:text-slate-400;
+    @apply font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-brand-500 dark:text-slate-400;
+  }
+  /* Rótulo técnico em mono (ex: "OPERAÇÃO", "ÚLTIMOS 7 DIAS"). */
+  .eyebrow {
+    @apply font-mono text-[10.5px] font-medium uppercase tracking-[0.16em] text-brand-400 dark:text-slate-500;
+  }
+  /* Número grande de painel. */
+  .kpi {
+    @apply font-mono text-2xl font-semibold tracking-tight text-brand-900 dark:text-white;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Chip neutro (serviços, filtros). */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-brand-600
+      dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300;
+  }
+  /* Tecla de atalho (⌘K). */
+  .kbd {
+    @apply inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-slate-300 bg-white px-1 font-mono text-[10px] text-brand-500
+      dark:border-white/15 dark:bg-white/[0.05] dark:text-slate-400;
   }
 }
 
@@ -128,5 +198,10 @@
 /* Barra de rolagem discreta nas listas com rolagem própria */
 .scroll-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgba(95, 110, 132, 0.4) transparent;
+  scrollbar-color: rgba(120, 130, 150, 0.35) transparent;
+}
+
+/* Barra de progresso com o gradiente do Pipe OS (onboarding, metas). */
+.progress-fill {
+  background: linear-gradient(90deg, #6649f5, #7b66ff 55%, #22d3ee);
 }
