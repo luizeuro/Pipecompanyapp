@@ -23,7 +23,7 @@ export function ToastProvider({ children }) {
             key={t.id}
             className={cx(
               'pointer-events-auto flex max-w-md items-start gap-2 rounded-xl px-4 py-3 text-sm font-medium shadow-lg',
-              t.type === 'error' ? 'bg-rose-600 text-white' : 'bg-brand-800 text-white dark:bg-white dark:text-brand-800',
+              t.type === 'error' ? 'bg-rose-600 text-white' : 'bg-brand-900 text-white ring-1 ring-white/10 dark:bg-slate-900 dark:text-white dark:ring-accent-400/30',
             )}
           >
             {t.type === 'error' ? <XCircle className="mt-0.5 h-4 w-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}

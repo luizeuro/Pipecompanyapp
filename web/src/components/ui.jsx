@@ -3,7 +3,9 @@
 import { AlertOctagon, AlertTriangle, Bot, Info, Loader2 } from 'lucide-react'
 import { LEVEL_STYLES, daysSince, urgencyLevel, optimizationLabel } from '../lib/urgency.js'
 import { getTag, TAG_COLOR_CLASSES } from '../lib/tags.js'
+import { useLocation } from 'react-router-dom'
 import { PLATFORMS, SEVERITY } from '../lib/constants.js'
+import { sectionOf } from '../lib/nav.js'
 
 export function cx(...classes) {
   return classes.filter(Boolean).join(' ')
@@ -162,7 +164,7 @@ export function EmptyState({ icon: Icon, title, children, action }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
       {Icon && (
-        <div className="mb-3 rounded-full bg-brand-100 p-3 text-brand-600 dark:bg-slate-800 dark:text-slate-300">
+        <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-accent-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-accent-300">
           <Icon className="h-6 w-6" aria-hidden="true" />
         </div>
       )}
@@ -173,11 +175,15 @@ export function EmptyState({ icon: Icon, title, children, action }) {
   )
 }
 
-export function PageHeader({ title, subtitle, actions }) {
+export function PageHeader({ title, subtitle, actions, eyebrow }) {
+  const { pathname } = useLocation()
+  const nav = sectionOf(pathname)
+  const kicker = eyebrow ?? (nav?.section ? `${nav.section} / ${nav.label}` : null)
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold tracking-tight text-brand-800 dark:text-white">{title}</h1>
+        {kicker && <div className="eyebrow mb-1.5">{kicker}</div>}
+        <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-brand-900 dark:text-white">{title}</h1>
         {subtitle && <p className="muted mt-1 text-sm">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -194,15 +200,15 @@ export function StatTile({ label, value, hint, level, icon: Icon, onClick, activ
       onClick={onClick}
       className={cx(
         'card flex min-w-0 flex-col items-start p-4 text-left',
-        onClick && 'transition hover:border-brand-300 dark:hover:border-slate-600',
-        active && 'border-brand-800 ring-1 ring-brand-800 dark:border-slate-300 dark:ring-slate-300',
+        onClick && 'transition hover:border-accent-300 dark:hover:border-white/20',
+        active && 'border-accent-500 ring-1 ring-accent-500 dark:border-accent-400/70 dark:ring-accent-400/50',
       )}
     >
       <div className="flex w-full items-start justify-between gap-2">
         <span className="section-title leading-snug">{label}</span>
         {Icon && <Icon className={cx('mt-0.5 h-4 w-4 shrink-0', style ? style.text : 'text-brand-400')} aria-hidden="true" />}
       </div>
-      <span className={cx('tabular mt-auto pt-2 text-2xl font-bold', style ? style.text : 'text-brand-800 dark:text-white')}>
+      <span className={cx('tabular mt-auto pt-2 font-mono text-2xl font-semibold tracking-tight', style ? style.text : 'text-brand-900 dark:text-white')}>
         {value}
       </span>
       {hint && <span className="muted mt-0.5 text-xs">{hint}</span>}
@@ -226,7 +232,7 @@ export function Field({ label, htmlFor, hint, children, className }) {
 
 export function Tabs({ tabs, value, onChange }) {
   return (
-    <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800/70" role="tablist">
+    <div className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-100/80 p-1 dark:border-white/[0.06] dark:bg-white/[0.03]" role="tablist">
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -235,15 +241,15 @@ export function Tabs({ tabs, value, onChange }) {
           aria-selected={value === t.id}
           onClick={() => onChange(t.id)}
           className={cx(
-            'flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-semibold transition',
+            'flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition',
             value === t.id
-              ? 'bg-white text-brand-800 shadow-sm dark:bg-slate-950 dark:text-white'
+              ? 'bg-white text-brand-900 shadow-sm dark:bg-white/[0.09] dark:text-white dark:shadow-inner-top'
               : 'text-brand-500 hover:text-brand-800 dark:text-slate-400 dark:hover:text-slate-100',
           )}
         >
           {t.label}
           {t.count != null && (
-            <span className="rounded-full bg-slate-200 px-1.5 text-[11px] tabular dark:bg-slate-700">{t.count}</span>
+            <span className="rounded-md bg-slate-200 px-1.5 font-mono text-[10.5px] tabular dark:bg-white/10">{t.count}</span>
           )}
         </button>
       ))}
