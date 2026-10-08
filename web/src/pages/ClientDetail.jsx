@@ -1,6 +1,6 @@
 // Ficha do cliente: saúde, contrato, contatos, contas de anúncio (versão
 // detalhada), gráfico de saldo e abas com a linha do tempo (contatos +
-// otimizações), otimizações, pendências e alertas só dele.
+// otimizações), campanhas do Meta, otimizações, pendências e alertas só dele.
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Check, MessageSquarePlus, Pencil, Plus, Trash2, UserRound } from 'lucide-react'
@@ -21,6 +21,7 @@ import InteractionForm from '../components/InteractionForm.jsx'
 import Timeline from '../components/Timeline.jsx'
 import ReportForm from '../components/ReportForm.jsx'
 import ReportsList from '../components/ReportsList.jsx'
+import CampaignsPanel from '../components/CampaignsPanel.jsx'
 import { useToast } from '../components/Toast.jsx'
 import {
   cx,
@@ -232,6 +233,7 @@ export default function ClientDetail() {
           onChange={(v) => setParams({ aba: v }, { replace: true })}
           tabs={[
             { id: 'linha', label: 'Linha do tempo', count: interactions.length },
+            { id: 'campanhas', label: 'Campanhas' },
             { id: 'relatorios', label: 'Relatórios', count: reports.length },
             { id: 'otimizacoes', label: 'Otimizações', count: optimizations.length },
             { id: 'pendencias', label: 'Pendências', count: openPend.length },
@@ -248,9 +250,6 @@ export default function ClientDetail() {
             <Plus className="h-4 w-4" /> Novo relatório
           </button>
         )}
-        {tab === 'relatorios' && (
-          <ReportsList reports={reports} onChanged={load} emptyText="Relatórios e análises deste cliente (da equipe ou do Hermes) aparecem aqui." />
-        )}
         {tab === 'otimizacoes' && (
           <button type="button" className="btn-primary" onClick={() => setModal({ type: 'opt' })}>
             <Plus className="h-4 w-4" /> Registrar otimização
@@ -264,6 +263,10 @@ export default function ClientDetail() {
       </div>
 
       <div className="card overflow-hidden">
+        {tab === 'campanhas' && <CampaignsPanel clientId={c.id} metaAccountId={c.meta_ad_account_id} />}
+        {tab === 'relatorios' && (
+          <ReportsList reports={reports} onChanged={load} emptyText="Relatórios e análises deste cliente (da equipe ou do Hermes) aparecem aqui." />
+        )}
         {tab === 'linha' && (
           <Timeline
             interactions={interactions}
