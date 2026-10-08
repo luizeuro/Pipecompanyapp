@@ -291,6 +291,40 @@ app.get('/api/clients/:id/campaigns', async (req, res) => {
   res.json(await getClientCampaigns(req.params.id))
 })
 
+// ----- Onboarding do cliente (checklist) -----
+
+app.post('/api/clients/:id/onboarding', async (req, res) => {
+  res.status(201).json({ items: await crm.startOnboarding(req.params.id) })
+})
+
+app.post('/api/clients/:id/checklist', async (req, res) => {
+  res.status(201).json({ item: await crm.addChecklistItem(req.params.id, req.body) })
+})
+
+app.patch('/api/checklist/:id', async (req, res) => {
+  res.json({ item: await crm.setChecklistItemDone(req.params.id, Boolean(req.body.done), actorOf(req)) })
+})
+
+app.delete('/api/checklist/:id', async (req, res) => {
+  await crm.deleteChecklistItem(req.params.id)
+  res.json({ ok: true })
+})
+
+// ----- Manual da Pipe (todos leem; só admin edita) -----
+
+app.get('/api/playbooks', async (req, res) => {
+  res.json(await crm.listPlaybooks())
+})
+
+app.put('/api/playbooks/:slug', requireAdmin, async (req, res) => {
+  res.json({ playbook: await crm.savePlaybook(req.params.slug, req.body, actorOf(req)) })
+})
+
+app.delete('/api/playbooks/:slug', requireAdmin, async (req, res) => {
+  await crm.resetPlaybook(req.params.slug)
+  res.json({ ok: true })
+})
+
 // Verificação geral disparada por alguém da equipe (sem e-mail: quem clicou já está vendo a tela).
 app.post('/api/check', async (req, res) => {
   const { newAlerts, ...summary } = await runChecks({ trigger: `manual:${req.user.name}` })
