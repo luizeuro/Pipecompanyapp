@@ -75,6 +75,14 @@ export function daysLabel(days) {
   return `~${n} ${n === 1 ? 'dia' : 'dias'}`
 }
 
+// Saldo acabando, no jeito que a equipe fala: "pode esgotar em ~3 dias".
+export function runoutLabel(days) {
+  if (days == null) return null
+  if (days < 1) return 'pode esgotar hoje'
+  const n = Math.round(days)
+  return `pode esgotar em ~${n} ${n === 1 ? 'dia' : 'dias'}`
+}
+
 // Data de hoje no formato do <input type="date"> (fuso do navegador).
 export function todayInput() {
   const d = new Date()
